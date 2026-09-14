@@ -37,6 +37,21 @@
 		categoryId = '';
 		paymentMethodId = '';
 	}
+
+	// ponytail: simpan filter kecil saja; data list selalu segar dari load.
+	export const snapshot = {
+		capture: () => ({ q, categoryId, paymentMethodId }),
+		restore: (value: unknown) => {
+			if (typeof value !== 'object' || value === null) return;
+			const v = value as Record<string, unknown>;
+			if (typeof v.q === 'string') {
+				q = v.q;
+				debouncedQ = v.q;
+			}
+			if (typeof v.categoryId === 'string') categoryId = v.categoryId;
+			if (typeof v.paymentMethodId === 'string') paymentMethodId = v.paymentMethodId;
+		}
+	};
 </script>
 
 <svelte:head>
