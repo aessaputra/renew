@@ -196,12 +196,6 @@ button.border-border {
     @apply rounded-xl border border-dashed border-border px-5 py-12 text-center;
   }
 
-  /* ponytail: skip offscreen rows; drop if list stays under ~100 rows. */
-  .sub-row {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 84px;
-  }
-
   .danger-action {
     @apply flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] border border-control-border px-5 text-base font-semibold text-danger transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
   }
