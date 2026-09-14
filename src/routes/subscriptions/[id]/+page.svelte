@@ -4,72 +4,66 @@
 </svelte:head>
 
 <script lang="ts">
-	import { safeSubscriptionUrl } from '$lib/wallos';
+	import { formatBillingInterval, formatPrice, safeSubscriptionUrl } from '$lib/wallos';
 	let { data, form } = $props();
 	let s = $derived(data.subscription);
 	let href = $derived(safeSubscriptionUrl(s.url));
+	let deleteDialog = $state<HTMLDialogElement | undefined>();
 </script>
 
 <main class="page-shell bg-background font-sans text-foreground">
-	<div class="mx-auto w-full max-w-3xl text-left">
-		<a href="/" class="inline-flex min-h-12 items-center gap-2 rounded-[var(--radius-control)] text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-			<span aria-hidden="true">←</span> Back to list
+	<div class="mx-auto w-full max-w-5xl text-left">
+		<header class="app-header">
+			<a href="/" aria-label="Renew home" class="brand-link">
+				<span aria-hidden="true" class="flex size-8 items-center justify-center rounded-[var(--radius-control)] bg-primary text-base text-primary-foreground">r.</span>
+				<span>Renew</span>
+			</a>
+			<form method="POST" action="/auth/logout">
+				<button type="submit" class="min-h-12 rounded-[var(--radius-control)] px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Sign out</button>
+			</form>
+		</header>
+		<a href="/" class="back-link">
+			<svg aria-hidden="true" class="size-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 10H4M10 4l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round" /></svg> Back to list
 		</a>
 
-		<h1 class="mt-4 text-3xl font-semibold tracking-tight text-balance break-words sm:text-4xl">
-			{s.name}
-		</h1>
-		<p class="mt-3 text-xl font-semibold tabular-nums">
-			{s.currencyCode}
-			{s.price} · {s.next_payment || 'Not set'}
-		</p>
-
-		<div class="mt-5">
-			<a
-				href="/subscriptions/{s.id}/edit"
-				class="primary-action w-full sm:w-auto sm:min-w-40"
-			>
-				Edit
-			</a>
-		</div>
-
-		<div class="mt-8 flex flex-col gap-4"><section aria-labelledby="billing-heading" class="min-w-0 rounded-xl border border-border bg-surface px-4 py-4 sm:px-6"><h2 id="billing-heading" class="text-sm font-semibold text-muted-foreground">Billing</h2><dl class="mt-3 flex flex-col divide-y divide-border">
-			<div class="grid min-w-0 grid-cols-1 gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-				<dt class="text-base text-muted-foreground">Next payment</dt>
-				<dd class="min-w-0 break-words text-base">{s.next_payment || 'Not set'}</dd>
+		<section aria-labelledby="subscription-heading" class="mt-6">
+			<div class="detail-hero mb-8">
+				<h1 id="subscription-heading" class="page-title min-w-0">{s.name}</h1>
+				<p class="text-2xl font-medium tracking-tight tabular-nums [overflow-wrap:anywhere] sm:text-3xl"><span class="sr-only">Price: </span>{formatPrice(s.price, s.currencyCode)}</p>
 			</div>
-			<div class="grid min-w-0 grid-cols-1 gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-				<dt class="text-base text-muted-foreground">Start date</dt>
-				<dd class="min-w-0 break-words text-base">{s.start_date || 'Not set'}</dd>
+			<dl class="billing-grid">
+			<div>
+				<dt>Next payment</dt>
+				<dd>{s.next_payment || 'Not set'}</dd>
 			</div>
-			<div class="grid min-w-0 grid-cols-1 gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-				<dt class="text-base text-muted-foreground">Cycle</dt>
-				<dd class="text-base tabular-nums">{s.cycle}</dd>
+			<div>
+				<dt>Start date</dt>
+				<dd>{s.start_date || 'Not set'}</dd>
 			</div>
-			<div class="grid min-w-0 grid-cols-1 gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-				<dt class="text-base text-muted-foreground">Frequency</dt>
-				<dd class="text-base tabular-nums">{s.frequency}</dd>
+			<div>
+				<dt>Billing interval</dt>
+				<dd class="tabular-nums">{formatBillingInterval(s.cycle, s.frequency)}</dd>
 			</div>
-			<div class="grid min-w-0 grid-cols-1 gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-				<dt class="text-base text-muted-foreground">Category</dt>
-				<dd class="min-w-0 break-words text-base">{s.category_name || 'Not set'}</dd>
+			<div>
+				<dt>Category</dt>
+				<dd>{s.category_name || 'Not set'}</dd>
 			</div>
-			<div class="grid min-w-0 grid-cols-1 gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-				<dt class="text-base text-muted-foreground">Payment method</dt>
-				<dd class="min-w-0 break-words text-base">{s.payment_method_name || 'Not set'}</dd>
+			<div>
+				<dt>Payment method</dt>
+				<dd>{s.payment_method_name || 'Not set'}</dd>
 			</div>
-			<div class="grid min-w-0 grid-cols-1 gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-				<dt class="text-base text-muted-foreground">Reminder</dt>
-				<dd class="min-w-0 break-words text-base">
+			<div>
+				<dt>Reminder</dt>
+				<dd>
 					{s.notify === 1 ? `On · ${s.notify_days_before} days before` : 'Off'}
 				</dd>
 			</div>
 			{#if s.url}
-				<div class="grid min-w-0 grid-cols-1 gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
-					<dt class="text-base text-muted-foreground">URL</dt>
-					<dd class="min-w-0 break-words text-base">
+				<div>
+					<dt>URL</dt>
+					<dd>
 						{#if href}
-							<a {href} rel="noopener" class="inline-flex min-h-11 items-center rounded-[var(--radius-control)] px-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Open</a>
+							<a {href} target="_blank" rel="noopener" class="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] px-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><svg aria-hidden="true" class="size-4 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4h4v4M16 4l-9 9M8 6H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3" stroke-linecap="round" stroke-linejoin="round" /></svg>Open<span class="sr-only"> in new tab</span></a>
 						{:else}
 							{s.url}
 						{/if}
@@ -77,32 +71,43 @@
 				</div>
 			{/if}
 			{#if s.notes}
-				<div class="flex flex-col gap-1 py-3">
-					<dt class="text-base text-muted-foreground">Notes</dt>
-					<dd class="min-w-0 text-base leading-relaxed break-words whitespace-pre-line [overflow-wrap:anywhere]">{s.notes}</dd>
+				<div class="billing-notes">
+					<dt>Notes</dt>
+					<dd class="text-base leading-relaxed whitespace-pre-line">{s.notes}</dd>
 				</div>
 			{/if}
-		</dl></section>
-	</div>
+			</dl>
+			<div class="detail-actions">
+				<a href="/subscriptions/{s.id}/edit" aria-label="Edit {s.name}" class="primary-action primary-action-inline">Edit</a>
+				<button type="button" onclick={() => { if (deleteDialog && !deleteDialog.open) deleteDialog.showModal(); }} class="danger-action danger-action-inline">Delete subscription</button>
+				<dialog bind:this={deleteDialog} aria-labelledby="delete-dialog-title" class="delete-dialog">
+					<h2 id="delete-dialog-title" class="text-xl font-semibold tracking-tight">Delete {s.name} ?</h2>
+					<p class="mt-2 text-base leading-relaxed text-muted-foreground">This permanently deletes this subscription. This cannot be undone.</p>
+					<div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+						<form method="dialog">
+							<button type="submit" class="secondary-action">Cancel</button>
+						</form>
+						<form method="POST" action="/subscriptions/{s.id}?/delete">
+							<input type="hidden" name="confirm" value="yes" />
+							<button
+								type="submit"
+								aria-label="Delete {s.name}"
+								class="danger-action danger-action-inline"
+							>
+								Delete
+							</button>
+						</form>
+					</div>
+				</dialog>
+			</div>
+		</section>
 
 		{#if form?.errors}
-			<p role="alert" class="mt-3">{form.errors.join(' ')}</p>
+			<ul role="alert" class="mt-6 rounded-[var(--radius-control)] border border-border bg-surface px-4 py-3 text-danger">
+				{#each form.errors as e, i (i)}
+					<li class="text-base">{e}</li>
+				{/each}
+			</ul>
 		{/if}
-		<details class="mt-8 rounded-xl border border-border px-4 py-1">
-			<summary class="inline-flex min-h-12 cursor-pointer items-center py-3 font-medium text-danger rounded-[var(--radius-control)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">Delete subscription</summary>
-		<form method="POST" action="/subscriptions/{s.id}?/delete" class="mt-3">
-			<label class="flex min-h-12 items-center gap-3">
-				<input type="checkbox" name="confirm" value="yes" required />
-				Delete {s.name} permanently
-			</label>
-			<button
-				type="submit"
-				aria-label="Delete {s.name}"
-				class="flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] border border-border px-5 text-base font-semibold text-danger transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-			>
-				Delete
-			</button>
-		</form>
-		</details>
 	</div>
 </main>

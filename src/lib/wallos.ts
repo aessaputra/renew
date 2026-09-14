@@ -24,6 +24,19 @@ export function currencyById(
 	return { code: found?.code ?? '', symbol: found?.symbol ?? '' };
 }
 
+export function formatPrice(amount: number, currencyCode: string): string {
+	const code = currencyCode.trim().toUpperCase();
+	const locale = code === 'IDR' ? 'id-ID' : 'en-US';
+	// Significant digits retain small fractions, including currencies with zero minor units.
+	const options = { maximumSignificantDigits: 21 };
+	try {
+		return new Intl.NumberFormat(locale, { ...options, style: 'currency', currency: code }).format(amount);
+	} catch {
+		const number = new Intl.NumberFormat(locale, options).format(amount);
+		return currencyCode.trim() ? `${currencyCode.trim()}\u00a0${number}` : number;
+	}
+}
+
 export interface SubscriptionFilter {
 	q: string;
 	categoryId: string;
@@ -84,6 +97,17 @@ export function subscriptionFormValues(fd: FormData): Record<string, string> {
 	}));
 }
 
+export function coerceWallosNumber(value: unknown): number {
+	return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+export function formatBillingInterval(cycle: unknown, frequency: unknown): string {
+	if (typeof cycle !== 'number' || !Number.isInteger(cycle) || cycle < 1 || cycle > 4 ||
+		typeof frequency !== 'number' || !Number.isSafeInteger(frequency) || frequency < 1) return 'Not set';
+	const unit = ['day', 'week', 'month', 'year'][cycle - 1];
+	return frequency === 1 ? `Every ${unit}` : `Every ${frequency} ${unit}s`;
+}
+
 export function safeSubscriptionUrl(value: string): string {
 	try {
 		const url = new URL(value);
@@ -121,8 +145,8 @@ export function validateSubscriptionInput(
 
 	const priceRaw = str('price');
 	const price = Number(priceRaw);
-	if (!priceRaw || !Number.isFinite(price) || price <= 0) {
-		errors.push('Price must be a positive number.');
+	if (!priceRaw || !Number.isFinite(price) || price < 0) {
+		errors.push('Price must be a non-negative number.');
 	}
 
 	const currency_id = toPositiveInt(str('currency_id'));
@@ -132,7 +156,9 @@ export function validateSubscriptionInput(
 	if (frequency === undefined) errors.push('Frequency is required.');
 
 	const cycle = toPositiveInt(str('cycle'));
-	if (cycle === undefined) errors.push('Cycle is required.');
+	if (cycle === undefined || ![1, 2, 3, 4].includes(cycle)) {
+		errors.push('Cycle must be 1 (Days), 2 (Weeks), 3 (Months), or 4 (Years).');
+	}
 
 	const next_payment = str('next_payment');
 	if (!isValidDate(next_payment)) errors.push('Next payment date is required (YYYY-MM-DD).');
@@ -208,6 +234,6 @@ export function toWallosFields(data: ValidatedSubscriptionInput, editing = false
 	if (data.notes !== undefined) fields.notes = data.notes;
 	// Omission preserves upstream values on edit; explicit empties clear them.
 	return editing ? {
-		category_id: '0', payment_method_id: '0', notify_days_before: '0', url: '', notes: '', ...fields
+		category_id: '', payment_method_id: '', notify_days_before: '', url: '', notes: '', ...fields
 	} : fields;
 }

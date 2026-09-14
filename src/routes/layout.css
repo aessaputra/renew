@@ -1,30 +1,32 @@
 @import 'tailwindcss';
 
 :root {
-	--background: var(--color-stone-50);
-	--foreground: var(--color-stone-900);
-	--muted-foreground: var(--color-stone-600);
-	--primary: var(--color-emerald-800);
-	--primary-foreground: var(--color-stone-50);
-	--primary-hover: var(--color-emerald-900);
-	--border: var(--color-stone-500);
-	--ring: var(--color-emerald-800);
+	--background: #f7f6f3;
+	--foreground: #2f3437;
+	--muted-foreground: #6f6e6b;
+	--primary: #111111;
+	--primary-foreground: #f9f9f8;
+	--primary-hover: #333333;
+	--border: #eaeaea;
+	--control-border: #78716c;
+	--ring: #111111;
 	--radius-control: 0.5rem;
-	--surface: var(--color-stone-100);
+	--surface: #f9f9f8;
 	--danger: var(--color-red-800);
 }
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--background: var(--color-stone-950);
-		--foreground: var(--color-stone-100);
-		--muted-foreground: var(--color-stone-400);
-		--primary: var(--color-emerald-300);
-		--primary-foreground: var(--color-stone-950);
-		--primary-hover: var(--color-emerald-200);
-		--border: var(--color-stone-500);
-		--ring: var(--color-emerald-300);
-		--surface: var(--color-stone-900);
+		--background: #1c1b19;
+		--foreground: #f7f6f3;
+		--muted-foreground: #b0ada7;
+		--primary: #f7f6f3;
+		--primary-foreground: #1c1b19;
+		--primary-hover: #e5e3de;
+		--border: #383632;
+		--control-border: #8a857d;
+		--ring: #f7f6f3;
+		--surface: #262522;
 		--danger: var(--color-red-300);
 	}
 }
@@ -37,6 +39,7 @@
 	--color-primary-foreground: var(--primary-foreground);
 	--color-primary-hover: var(--primary-hover);
 	--color-border: var(--border);
+	--color-control-border: var(--control-border);
 	--color-ring: var(--ring);
 	--color-surface: var(--surface);
 	--color-danger: var(--danger);
@@ -50,6 +53,7 @@ body {
 
 :root {
 	color-scheme: light dark;
+	scrollbar-gutter: stable;
 }
 
 ::selection {
@@ -61,6 +65,10 @@ input,
 select,
 textarea {
 	color-scheme: light dark;
+}
+
+button.border-border {
+  border-color: var(--control-border);
 }
 
 @layer components {
@@ -81,11 +89,135 @@ textarea {
   }
 
   .field-control {
-    @apply min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-base font-normal text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
+    @apply min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-control-border bg-background px-3 text-base font-normal text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
+  }
+
+  .filter-status {
+    @apply flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-muted-foreground;
+  }
+
+  .filter-menu {
+    @apply relative shrink-0;
+  }
+
+  .filter-menu-button {
+    @apply relative flex min-h-12 w-12 list-none items-center justify-center rounded-[var(--radius-control)] border border-control-border bg-background text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden;
+  }
+
+  .filter-menu-button-active {
+    @apply border-primary text-foreground;
+  }
+
+  .filter-menu-panel {
+    @apply absolute right-0 z-20 mt-2 flex max-h-72 min-w-52 flex-col gap-1 overflow-y-auto rounded-[var(--radius-control)] border border-control-border bg-surface p-2 shadow-lg;
+  }
+
+  .filter-menu-option {
+    @apply flex min-h-11 w-full items-center rounded-[var(--radius-control)] px-3 text-left text-base text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring;
+  }
+
+  .filter-menu-option-active {
+    @apply bg-primary font-medium text-primary-foreground hover:text-primary-foreground;
   }
 
   .primary-action {
-    @apply inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] bg-primary px-5 text-base font-semibold text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-70;
+    @apply inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] bg-primary px-5 text-base font-semibold whitespace-nowrap text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-70;
+  }
+
+  .primary-action-inline {
+    @apply w-full sm:w-auto sm:min-w-40;
+  }
+
+  .primary-action-block {
+    @apply w-full;
+  }
+
+  .billing-grid {
+    @apply mt-3 grid grid-cols-1 divide-y divide-border border-y border-border;
+  }
+
+  .billing-grid > div {
+    @apply flex min-w-0 items-baseline justify-between gap-4 py-3;
+  }
+
+  .billing-grid dt {
+    @apply shrink-0 text-base text-muted-foreground;
+  }
+
+  .billing-grid dd {
+    @apply min-w-0 text-right text-base break-words [overflow-wrap:anywhere];
+  }
+
+  .billing-notes {
+    @apply flex-col items-start gap-1;
+  }
+
+  .billing-notes dd {
+    @apply w-full text-left;
+  }
+
+  .detail-hero {
+    @apply grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-2;
+  }
+
+  .detail-actions {
+    @apply mt-8 flex min-w-0 flex-col gap-4 sm:w-96 sm:flex-row sm:items-start;
+  }
+
+  .action-bar {
+    @apply flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center;
+  }
+
+  .secondary-action {
+    @apply inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] border border-control-border px-5 text-base font-semibold whitespace-nowrap text-foreground transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto sm:min-w-40;
+  }
+
+  .app-header {
+    @apply flex min-h-16 items-center justify-between gap-4;
+  }
+
+  .brand-link {
+    @apply inline-flex min-h-12 items-center gap-2 rounded-[var(--radius-control)] font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
+  }
+
+  .back-link {
+    @apply inline-flex min-h-12 items-center gap-2 rounded-[var(--radius-control)] text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
+  }
+
+  .card {
+    @apply min-w-0 rounded-xl border border-border bg-surface p-6 sm:p-8;
+  }
+
+  .card-pad {
+    @apply p-4 sm:px-6;
+  }
+
+  .empty-state {
+    @apply rounded-xl border border-dashed border-border px-5 py-12 text-center;
+  }
+
+  .danger-action {
+    @apply flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] border border-control-border px-5 text-base font-semibold text-danger transition-colors hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
+  }
+
+  .danger-action-inline {
+    @apply min-h-12 w-full sm:w-auto sm:min-w-40;
+  }
+
+  .page-title {
+    @apply text-3xl font-semibold tracking-tight text-balance sm:text-4xl;
+  }
+
+  .eyebrow {
+    @apply text-sm font-medium text-muted-foreground;
+  }
+
+  .delete-dialog {
+    @apply m-auto w-[calc(100vw-2rem)] max-w-md rounded-xl border border-border bg-surface p-6 text-left text-foreground shadow-none sm:p-8;
+  }
+
+  .delete-dialog::backdrop {
+    background: rgb(0 0 0 / 0.4);
   }
 
   @media (hover: hover) and (pointer: fine) {

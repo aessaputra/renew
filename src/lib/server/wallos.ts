@@ -4,6 +4,7 @@ import type {
 	WallosPaymentMethod,
 	WallosCurrency
 } from '$lib/wallos.js';
+import { coerceWallosNumber } from '$lib/wallos.js';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -113,13 +114,20 @@ export async function getSubscription(
 
 function parseSubscription(value: unknown): WallosSubscription {
 	if (!isRecord(value)) throw new Error('failed');
+	const NULLABLE_NUMBERS = new Set(['category_id', 'payment_method_id', 'notify_days_before']);
 	const numericFields = ["id", "price", "currency_id", "cycle", "frequency", "payment_method_id", "category_id", "notify", "inactive", "notify_days_before"] as const;
 	const stringFields = ["name", "next_payment", "notes", "url", "start_date", "category_name", "payment_method_name"] as const;
-	if (numericFields.some((key) => typeof value[key] !== 'number' || !Number.isFinite(value[key]))) throw new Error('failed');
+	for (const key of numericFields) {
+		const raw = value[key];
+		const coerced = raw == null && NULLABLE_NUMBERS.has(key) ? 0 : raw;
+		if (typeof coerced !== 'number' || !Number.isFinite(coerced)) throw new Error('failed');
+	}
 	if (stringFields.some((key) => typeof value[key] !== 'string')) throw new Error('failed');
 	if (!Number.isSafeInteger(value.id) || Number(value.id) <= 0 || ![0, 1].includes(Number(value.inactive)) || ![0, 1].includes(Number(value.notify))) throw new Error('failed');
 	// Only known fields cross the server boundary; upstream extras never reach page data.
-	return Object.fromEntries([...numericFields, ...stringFields].map((key) => [key, value[key]])) as unknown as WallosSubscription;
+	const out = Object.fromEntries([...numericFields, ...stringFields].map((key) => [key, value[key]])) as unknown as Record<string, unknown>;
+	for (const key of NULLABLE_NUMBERS) out[key] = coerceWallosNumber(out[key]);
+	return out as unknown as WallosSubscription;
 }
 
 function referenceList(value: unknown): Record<string, unknown>[] {

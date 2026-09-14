@@ -24,7 +24,7 @@
 	{#if data.referencesUnavailable}
 		<p role="status" class="rounded-[var(--radius-control)] border border-border bg-primary/5 px-4 py-3 text-sm text-muted-foreground">Reference data is unavailable. Submitted selections are preserved by ID.</p>
 	{/if}
-	<fieldset class="rounded-xl border border-border px-4 pt-4 pb-5 min-w-0 bg-surface">
+	<fieldset class="card card-pad">
 		<legend class="px-2 text-sm font-semibold text-muted-foreground">Billing</legend>
 		<div class="flex flex-col gap-4">
 	<label class="flex flex-col gap-2 text-base font-medium">
@@ -46,7 +46,7 @@
 				name="price"
 				type="number"
 				step="0.01"
-				min="0.01"
+				min="0"
 				required
 				inputmode="decimal"
 				value={values.price ?? ''}
@@ -67,42 +67,48 @@
 				<option value={values.currency_id}>Currency ID {values.currency_id}</option>
 			{/if}
 			{#each data.currencies as c (c.id)}
-					<option value={String(c.id)}>{c.code} {c.symbol}</option>
-				{/each}
+				<option value={String(c.id)}>{c.code}</option>
+			{/each}
 			</select>
 		</label>
 	</div>
-	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-		<label class="flex min-w-0 flex-col gap-2 text-base font-medium">
-			Frequency
-			<input
-				name="frequency"
-				type="number"
-				min="1"
-				required
-				inputmode="numeric"
-				aria-describedby="frequency-help"
-				value={values.frequency ?? ''}
-				class="field-control tabular-nums"
-				placeholder="1"
-			/>
-		</label>
-		<label class="flex min-w-0 flex-col gap-2 text-base font-medium">
-			Cycle
-			<input
-				name="cycle"
-				type="number"
-				min="1"
-				required
-				inputmode="numeric"
-				aria-describedby="frequency-help"
-				value={values.cycle ?? ''}
-				class="field-control tabular-nums"
-				placeholder="3"
-			/>
-		</label>
+	<div role="group" aria-labelledby="billing-interval" class="min-w-0">
+		<p id="billing-interval" class="mb-2 text-base font-medium">Billing interval</p>
+		<div class="flex items-center gap-3">
+			<span>Every</span>
+			<label class="w-20 min-w-0 shrink-0 sm:w-24">
+				<span class="sr-only">Repeat every</span>
+				<input
+					name="frequency"
+					type="number"
+					min="1"
+					step="1"
+					required
+					inputmode="numeric"
+					value={values.frequency ?? ''}
+					class="field-control tabular-nums"
+				/>
+			</label>
+			<label class="min-w-0 flex-1 sm:max-w-48">
+				<span class="sr-only">Period unit</span>
+				<select
+					name="cycle"
+					required
+					value={values.cycle ?? ''}
+					class="field-control"
+				>
+					<option value="">Select</option>
+					{#if values.cycle && !['1', '2', '3', '4'].includes(values.cycle)}
+						<option value={values.cycle}>Invalid selection ({values.cycle})</option>
+					{/if}
+					<option value="1">Days</option>
+					<option value="2">Weeks</option>
+					<option value="3">Months</option>
+					<option value="4">Years</option>
+				</select>
+			</label>
+		</div>
 	</div>
-	<p id="frequency-help" class="text-sm text-muted-foreground">Use the numeric values from Wallos.</p>
 	<label class="flex flex-col gap-2 text-base font-medium">
 		Next payment
 		<input
@@ -115,7 +121,7 @@
 	</label>
 		</div>
 	</fieldset>
-	<fieldset class="mt-5 rounded-xl border border-border px-4 pt-4 pb-5 min-w-0 bg-surface">
+	<fieldset class="card card-pad mt-5">
 		<legend class="px-2 text-sm font-semibold text-muted-foreground">Organization <span class="font-normal">(optional)</span></legend>
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<label class="flex min-w-0 flex-col gap-2 text-base font-medium">
@@ -152,7 +158,7 @@
 		</label>
 		</div>
 	</fieldset>
-	<fieldset class="mt-5 rounded-xl border border-border px-4 pt-4 pb-5 min-w-0 bg-surface">
+	<fieldset class="card card-pad mt-5">
 		<legend class="px-2 text-sm font-semibold text-muted-foreground">Reminder &amp; notes <span class="font-normal">(optional)</span></legend>
 		<div class="flex flex-col gap-4">
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -206,7 +212,7 @@
 	</fieldset>
 	<button
 		type="submit" disabled={pending} aria-busy={pending}
-		class="primary-action mt-5 w-full sm:w-auto sm:min-w-40"
+		class="primary-action primary-action-inline mt-5"
 	>
 		{pending ? 'Saving…' : 'Save'}
 	</button>

@@ -1,6 +1,6 @@
 <svelte:head>
-	<title>Sign in to Renew</title>
-	<meta name="description" content="Sign in to Renew to manage your subscriptions." />
+	<title>Renew — Sign in</title>
+	<meta name="description" content="Renew — sign in to manage your subscriptions." />
 </svelte:head>
 
 <script lang="ts">
@@ -18,9 +18,12 @@
 </script>
 
 <main class="page-shell page-shell-centered flex items-center justify-center bg-background font-sans text-foreground">
-	<div class="w-full max-w-md rounded-xl border border-border bg-surface p-6 text-left sm:p-8">
-		<p class="text-sm font-medium text-muted-foreground">Renew</p>
-		<h1 class="mt-2 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+	<div class="card w-full max-w-md text-left">
+		<a href="/" aria-label="Renew home" class="brand-link">
+			<span aria-hidden="true" class="flex size-8 items-center justify-center rounded-[var(--radius-control)] bg-primary text-base text-primary-foreground">r.</span>
+			<span>Renew</span>
+		</a>
+		<h1 class="page-title mt-4">
 			Sign in
 		</h1>
 		<p class="mt-2 text-base leading-relaxed text-muted-foreground">
@@ -29,7 +32,7 @@
 		{#if errorMessage}
 			<p
 				role="alert"
-				class="mt-6 rounded-[var(--radius-control)] border border-border px-4 py-3 text-base text-danger"
+				class="mt-6 rounded-[var(--radius-control)] border border-border bg-surface px-4 py-3 text-base text-danger"
 			>
 				{errorMessage}
 			</p>
@@ -37,7 +40,7 @@
 		<form method="POST" action="/auth/login" class="mt-6">
 			<button
 				type="submit"
-				class="primary-action w-full whitespace-nowrap"
+				class="primary-action primary-action-block"
 			>
 				Continue with OIDC
 			</button>

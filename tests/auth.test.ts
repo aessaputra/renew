@@ -533,11 +533,18 @@ describe('login page copy', () => {
 		const r = await request(`${ORIGIN}/login`, { ca: certFile, jar: new Map() });
 		assert.equal(r.status, 200);
 		assert.match(r.body, /<html lang="en"/);
-		assert.match(r.body, /Sign in to Renew/);
+		assert.match(r.body, /Renew — Sign in/);
 		assert.match(r.body, /Continue with OIDC/);
 		assert.match(r.body, /Your subscriptions, in one place\./);
 		assert.doesNotMatch(r.body, /role="alert"/);
 		assert.equal(r.headers['cache-control'], 'no-store');
+	});
+
+	it('uses brand mark and alert error pattern', async () => {
+		const r = await request(`${ORIGIN}/login`, { ca: certFile, jar: new Map() });
+		assert.equal(r.status, 200);
+		assert.match(r.body, /aria-label="Renew home"/);
+		assert.doesNotMatch(r.body, /secure redirect|redirected securely|secure sign-in/i);
 	});
 
 	it('maps fixed error codes to safe messages', async () => {

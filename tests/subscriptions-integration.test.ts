@@ -558,9 +558,97 @@ describe('subscriptions list', () => {
 		assert.doesNotMatch(r.body, /api_key/);
 		assert.doesNotMatch(r.body, new RegExp(SECRET));
 	});
+
+	it('prefixes list titles with category and shows only payment in metadata', async () => {
+		const r = await request(`${ORIGIN}/`, { ca: certFile, jar });
+		assert.equal(r.status, 200);
+		const list = r.body.match(/<ul aria-label="Subscriptions"[^>]*>[\s\S]*?<\/ul>/)?.[0] ?? '';
+		assert.ok(list.length > 0, 'subscriptions list');
+		assert.match(list, /\[Video\] Fixture One/);
+		assert.match(list, /\[Music\] Fixture Two/);
+		assert.doesNotMatch(list, /Video · Card/);
+		assert.doesNotMatch(list, /Music · Cash/);
+		assert.equal((list.match(/Video/g) ?? []).length, 1);
+		assert.equal((list.match(/Music/g) ?? []).length, 1);
+		assert.match(list, />Card</);
+		assert.match(list, />Cash</);
+	});
+
+	it('omits category prefix when absent and labels empty payment metadata', async () => {
+		const previous = F.subscriptions[0];
+		try {
+			F.subscriptions[0] = { ...previous, category_name: '', payment_method_name: '' };
+			const r = await request(`${ORIGIN}/`, { ca: certFile, jar });
+			assert.equal(r.status, 200);
+			const list = r.body.match(/<ul aria-label="Subscriptions"[^>]*>[\s\S]*?<\/ul>/)?.[0] ?? '';
+			assert.ok(list.length > 0, 'subscriptions list');
+			assert.doesNotMatch(list, /\[\] Fixture One/);
+			assert.ok(list.includes('>Fixture One<'));
+			const item = list.match(/<li>[\s\S]*?Fixture One[\s\S]*?<\/li>/)?.[0] ?? '';
+			assert.ok(item.length > 0, 'fixture row');
+			assert.doesNotMatch(item, /text-muted-foreground">\s*(?:\[|\])/);
+			assert.match(item, />No payment method</);
+		} finally { F.subscriptions[0] = previous; }
+	});
+
+	it('limits filter dropdowns to references used by active subscriptions', async () => {
+		const prevCats = F.categories;
+		const prevPays = F.paymentMethods;
+		try {
+			F.categories = [...prevCats, { id: 99, name: 'Unused Category', order: 3, in_use: 0 }];
+			F.paymentMethods = [...prevPays, { id: 99, name: 'Unused Pay', icon: '', enabled: 1, order: 3, in_use: 0 }];
+			const r = await request(`${ORIGIN}/`, { ca: certFile, jar });
+			assert.equal(r.status, 200);
+			const categoryMenu = r.body.match(/<details[^>]*id="category-filter"[^>]*>[\s\S]*?<\/details>/)?.[0] ?? '';
+			const paymentMenu = r.body.match(/<details[^>]*id="payment-filter"[^>]*>[\s\S]*?<\/details>/)?.[0] ?? '';
+			assert.ok(categoryMenu.length > 0, 'category menu');
+			assert.ok(paymentMenu.length > 0, 'payment menu');
+			assert.doesNotMatch(categoryMenu, /Unused Category/);
+			assert.doesNotMatch(paymentMenu, /Unused Pay/);
+			assert.match(categoryMenu, /Video/);
+			assert.match(paymentMenu, /Card/);
+		} finally { F.categories = prevCats; F.paymentMethods = prevPays; }
+	});
 });
 
 describe('subscription detail', () => {
+	it('places formatted price beside the name and shares it with home', async () => {
+		const previous = F.subscriptions[0];
+		const currency = F.currencies[0];
+		try {
+			F.subscriptions[0] = { ...previous, price: 36000 };
+			F.currencies[0] = { ...currency, code: 'IDR' };
+			const detail = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
+			assert.equal(detail.status, 200);
+			assert.match(detail.body, /<h1[^>]*>Fixture One<\/h1>\s*<p[^>]*tabular-nums[^>]*><span class="sr-only">Price:\s*<\/span>Rp\u00a036\.000<\/p>/);
+			assert.ok(detail.body.indexOf('Rp\u00a036.000') < detail.body.indexOf('<dl class="billing-grid"'));
+			const home = await request(`${ORIGIN}/`, { ca: certFile, jar });
+			assert.equal(home.status, 200);
+			assert.ok(home.body.includes('Rp\u00a036.000'));
+		} finally { F.subscriptions[0] = previous; F.currencies[0] = currency; }
+	});
+	it('renders one human-readable billing interval without raw cycle or frequency labels', async () => {
+		const previous = F.subscriptions[0];
+		try {
+			for (const [cycle, frequency, expected] of [
+				[1, 1, 'Every day'], [1, 3, 'Every 3 days'],
+				[2, 1, 'Every week'], [2, 2, 'Every 2 weeks'],
+				[3, 1, 'Every month'], [3, 3, 'Every 3 months'],
+				[4, 1, 'Every year'], [4, 2, 'Every 2 years'],
+				[0, 1, 'Not set'], [5, 1, 'Not set'], [2.5, 1, 'Not set'],
+				[3, 0, 'Not set'], [3, -1, 'Not set'], [3, 1.5, 'Not set']
+			] as const) {
+				F.subscriptions[0] = { ...previous, cycle, frequency };
+				const r = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
+				assert.equal(r.status, 200);
+				const billing = r.body.match(/<dl class="billing-grid">[\s\S]*?<\/dl>/)?.[0] ?? '';
+				assert.equal((billing.match(/>Billing interval<\/dt>/g) ?? []).length, 1);
+				assert.match(billing, new RegExp(`>Billing interval</dt>\\s*<dd[^>]*>${expected}</dd>`));
+				assert.doesNotMatch(billing, />(?:Cycle|Frequency)<\/dt>/);
+			}
+		} finally { F.subscriptions[0] = previous; }
+	});
+
 	it('renders fields and edit/delete controls', async () => {
 		const r = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
 		assert.equal(r.status, 200);
@@ -606,6 +694,8 @@ describe('upstream boundary', () => {
 			F.subscriptions[0] = { ...previous, url: 'https://example.com' };
 			const r = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
 			assert.match(r.body, /href="https:\/\/example\.com\/"/);
+			assert.match(r.body, /target="_blank"/);
+			assert.match(r.body, /rel="noopener"/);
 		} finally { F.subscriptions[0] = previous; }
 	});
 
@@ -630,32 +720,39 @@ describe('upstream boundary', () => {
 });
 
 describe('mobile list semantics', () => {
-  it('renders visible search and filter labels', async () => {
+  it('renders search with icon filter menus', async () => {
     const r = await request(`${ORIGIN}/`, { ca: certFile, jar });
     assert.equal(r.status, 200);
-    for (const [id, label] of [
-      ['subscription-search', 'Search subscriptions'],
-      ['category-filter', 'Category'],
-      ['payment-filter', 'Payment method']
-    ]) {
-      assert.match(r.body, new RegExp(`<label[^>]*for="${id}"[^>]*>\\s*${label}\\s*</label>`));
-      assert.ok(r.body.includes(`id="${id}"`));
+    assert.doesNotMatch(r.body, /<label[^>]*for="subscription-search"[^>]*>\s*Search subscriptions\s*<\/label>/);
+    assert.match(r.body, /aria-label="Search subscriptions"/);
+    assert.ok(r.body.includes('id="subscription-search"'));
+    for (const id of ['category-filter', 'payment-filter']) {
+      assert.match(r.body, new RegExp(`<details[^>]*id="${id}"`));
     }
+    assert.match(r.body, /Filter by category/);
+    assert.match(r.body, /Filter by payment method/);
     assert.match(r.body, /aria-label="Subscriptions"/);
     assert.match(r.body, /Next payment/);
   });
 });
 
 describe('mobile detail actions', () => {
-  it('offers edit before billing and keeps delete confirmation separate', async () => {
+  it('offers price beside the title with edit below billing and delete in a dialog', async () => {
     const r = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
     assert.equal(r.status, 200);
+    const billing = r.body.indexOf('<dl class="billing-grid"');
+    const billingEnd = r.body.indexOf('</dl>');
     const edit = r.body.indexOf('href="/subscriptions/1/edit"');
-    const billing = r.body.indexOf('id="billing-heading"');
-    assert.ok(edit >= 0 && billing > edit);
-    assert.match(r.body, /<details[\s\S]*<summary[\s\S]*Delete subscription/);
-    assert.match(r.body, /name="confirm"/);
-    assert.match(r.body, /value="yes"/);
+    const dialog = r.body.indexOf('<dialog');
+    assert.ok(billing >= 0 && billingEnd > billing && edit > billingEnd && dialog > edit);
+    assert.match(r.body, /<div class="detail-actions">\s*<a[^>]*>Edit<\/a>\s*<button/);
+    assert.match(r.body, /<dialog[^>]*aria-labelledby="delete-dialog-title"/);
+    assert.match(r.body, /<h2[^>]*>Delete Fixture One \?<\/h2>/);
+    assert.match(r.body, /This permanently deletes this subscription\. This cannot be undone\./);
+    assert.doesNotMatch(r.body, /Delete Fixture One permanently/);
+    assert.match(r.body, /<form method="POST" action="\/subscriptions\/1\?\/delete"/);
+    assert.match(r.body, /<input[^>]*type="hidden"[^>]*name="confirm"[^>]*value="yes"/);
+    assert.match(r.body, /<form method="dialog"/);
   });
 });
 
@@ -687,6 +784,55 @@ it('captures local fixture pages for responsive review', async () => {
     html = html.replace(/<form\b/g, '<form onsubmit="return false"');
     writeFileSync(join(out, `${name}.html`), html);
   }
+});
+
+describe('billing interval form', () => {
+	it('defaults only fresh add to every one month and retains existing edit values', async () => {
+		for (const [path, frequency, cycle] of [['new', '1', '3'], ['2/edit', '3', '4']]) {
+			const r = await request(`${ORIGIN}/subscriptions/${path}`, { ca: certFile, jar });
+			assert.equal(r.status, 200);
+			assert.match(r.body, new RegExp(`<input name="frequency"[^>]*value="${frequency}"`));
+			const select = r.body.match(/<select name="cycle"[^>]*>[\s\S]*?<\/select>/)?.[0] ?? '';
+			assert.match(select, new RegExp(`<option value="${cycle}" selected`));
+		}
+	});
+	for (const [path, action] of [['new', 'create'], ['2/edit', 'update']]) {
+		it(`retains submitted interval after native ${action} validation errors`, async () => {
+			for (const [frequency, cycle] of [['2', '2'], ['', ''], ['0', '5'], ['1.5', '0']]) {
+				const r = await request(`${ORIGIN}/subscriptions/${path}?/${action}`, {
+					method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded' },
+					body: new URLSearchParams({ name: 'Interval draft', price: '-5', frequency, cycle }).toString(),
+					ca: certFile, jar
+				});
+				assert.equal(r.status, 400);
+				assert.match(r.body, new RegExp(`<input name="frequency"[^>]*value="${frequency}"`));
+				const select = r.body.match(/<select name="cycle"[^>]*>[\s\S]*?<\/select>/)?.[0] ?? '';
+				assert.match(select, new RegExp(`<option value="${cycle}" selected`));
+				assert.match(r.body, /role="alert"/);
+				assert.match(r.body, /name="name"[^>]*value="Interval draft"/);
+			}
+		});
+	}
+	for (const path of ['new', '2/edit']) {
+		it(`renders one accessible native interval on ${path}`, async () => {
+			const r = await request(`${ORIGIN}/subscriptions/${path}`, { ca: certFile, jar });
+			assert.equal(r.status, 200);
+			assert.equal((r.body.match(/>Billing interval</g) ?? []).length, 1);
+			assert.match(r.body, /role="group" aria-labelledby="billing-interval"/);
+			assert.match(r.body, /<span[^>]*>Every<\/span>/);
+			assert.match(r.body, /<label[^>]*>[\s\S]*?Repeat every[\s\S]*?<input name="frequency"/);
+			assert.match(r.body, /<label[^>]*>[\s\S]*?Period unit[\s\S]*?<select name="cycle"/);
+			const input = r.body.match(/<input name="frequency"[^>]*>/)?.[0] ?? '';
+			for (const attr of ['type="number"', 'min="1"', 'step="1"', 'inputmode="numeric"', 'required']) assert.ok(input.includes(attr), attr);
+			const select = r.body.match(/<select name="cycle"[^>]*>[\s\S]*?<\/select>/)?.[0] ?? '';
+			for (const [value, text] of [['1', 'Days'], ['2', 'Weeks'], ['3', 'Months'], ['4', 'Years']]) {
+				assert.match(select, new RegExp(`<option value="${value}"[^>]*>${text}</option>`));
+			}
+			assert.doesNotMatch(r.body, />\s*(?:Frequency|Cycle)\s*</);
+			assert.doesNotMatch(r.body, /Cycle: 1 Days|per Wallos|frequency-help/);
+			assert.match(r.body, /<form method="POST"/);
+		});
+	}
 });
 
 describe('subscription mutations', () => {
@@ -752,13 +898,14 @@ describe('subscription mutations', () => {
 						ca: certFile, jar
 					});
 					assert.equal(r.status, price === '-5' ? 400 : 503);
-					assert.match(r.body, price === '-5' ? /Price must be a positive number/ : /Service unavailable/);
+					assert.match(r.body, price === '-5' ? /Price must be a non-negative number/ : /Service unavailable/);
 					assert.match(r.body, /Reference data is unavailable/);
 					assert.match(r.body, /name="name"[^>]*value="Retained draft"/);
 					assert.ok(r.body.includes(`value="${price}"`));
-					for (const [field, value] of [['frequency', '2'], ['cycle', '4'], ['next_payment', '2026-12-20'], ['notify_days_before', '0'], ['url', 'https://example.com/draft']]) {
+					for (const [field, value] of [['frequency', '2'], ['next_payment', '2026-12-20'], ['notify_days_before', '0'], ['url', 'https://example.com/draft']]) {
 						assert.match(r.body, new RegExp(`name="${field}"[^>]*value="${value}"`));
 					}
+					assert.match(r.body, /<select name="cycle"[^>]*>[\s\S]*?<option value="4" selected/);
 					for (const field of ['currency_id', 'category_id', 'payment_method_id']) {
 						assert.match(r.body, new RegExp(`<select name="${field}"[^>]*>[\\s\\S]*?<option value="2" selected`));
 					}
@@ -818,7 +965,7 @@ describe('subscription mutations', () => {
 			jar
 		});
 		assert.equal(r.status, 400);
-		assert.match(r.body, /Price must be a positive number/);
+		assert.match(r.body, /Price must be a non-negative number/);
 	});
 
 	it('rejects wrong origin with 403', async () => {

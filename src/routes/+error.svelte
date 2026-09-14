@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>Renew</title>
+	<title>Renew — Something went wrong</title>
 	<meta name="description" content="Renew — something went wrong." />
 </svelte:head>
 
@@ -14,9 +14,9 @@
 </script>
 
 <main class="page-shell page-shell-centered flex items-center justify-center bg-background font-sans text-foreground">
-	<div class="w-full max-w-md rounded-xl border border-border bg-surface p-6 text-left sm:p-8">
-		<p class="text-sm font-medium text-muted-foreground">Renew</p>
-		<h1 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+	<div class="card w-full max-w-md text-left">
+		<p class="eyebrow">Renew</p>
+		<h1 class="page-title mt-2">
 			Something went wrong
 		</h1>
 		<p role="alert" class="mt-2 text-base leading-relaxed text-muted-foreground">
@@ -25,7 +25,7 @@
 		<p class="mt-6">
 			<a
 				href="/"
-				class="primary-action w-full sm:w-auto"
+				class="primary-action primary-action-inline"
 			>
 				Back to home
 			</a>

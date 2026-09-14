@@ -1,13 +1,28 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+	formatBillingInterval,
 	filterSubscriptions,
 	safeSubscriptionUrl,
+	coerceWallosNumber,
 	subscriptionFormValues,
 	toWallosFields,
 	validateSubscriptionInput,
 	type SubscriptionRow
 } from '../src/lib/wallos.ts';
+
+it('formats billing intervals with the confirmed units and rejects invalid values', () => {
+	assert.equal(typeof formatBillingInterval, 'function');
+	for (const [cycle, unit] of [[1, 'day'], [2, 'week'], [3, 'month'], [4, 'year']] as const) {
+		assert.equal(formatBillingInterval(cycle, 1), `Every ${unit}`);
+		assert.equal(formatBillingInterval(cycle, 3), `Every 3 ${unit}s`);
+	}
+	for (const invalid of [undefined, null, '', '3', true, {}, [], NaN, Infinity, -Infinity, -1, 0, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+		assert.equal(formatBillingInterval(invalid, 1), 'Not set');
+		assert.equal(formatBillingInterval(3, invalid), 'Not set');
+	}
+	assert.equal(formatBillingInterval(5, 1), 'Not set');
+});
 
 function fd(entries: Record<string, string>): FormData {
 	const form = new FormData();
@@ -59,11 +74,23 @@ describe('validateSubscriptionInput', () => {
 		}
 	});
 
-	it('rejects negative and non-numeric price', () => {
-		for (const price of ['-5', 'abc', '0']) {
+	it('rejects negative and non-numeric price but accepts zero', () => {
+		for (const price of ['-5', 'abc', '']) {
 			const r = validateSubscriptionInput(fd({ ...valid(), price }));
 			assert.equal(r.ok, false);
 			if (!r.ok) assert.ok(r.errors.some((e) => e.includes('Price')));
+		}
+		assert.equal(validateSubscriptionInput(fd({ ...valid(), price: '0' })).ok, true);
+	});
+
+	it('rejects cycle outside 1-4 and accepts each valid cycle', () => {
+		for (const cycle of ['5', '0', 'abc']) {
+			const r = validateSubscriptionInput(fd({ ...valid(), cycle }));
+			assert.equal(r.ok, false);
+			if (!r.ok) assert.ok(r.errors.some((e) => e.includes('Cycle')));
+		}
+		for (const cycle of ['1', '2', '3', '4']) {
+			assert.equal(validateSubscriptionInput(fd({ ...valid(), cycle })).ok, true);
 		}
 	});
 
@@ -126,9 +153,20 @@ describe('input trust boundaries', () => {
 		}
 	});
 
+	it('clears unset optionals with empty strings on edit', () => {
+		const result = validateSubscriptionInput(fd(valid()));
+		assert.ok(result.ok);
+		if (!result.ok) return;
+		const fields = toWallosFields(result.data, true);
+		assert.equal(fields.category_id, '');
+		assert.equal(fields.payment_method_id, '');
+		assert.equal(fields.notify_days_before, '');
+	});
+
 	it('serializes validated fields without credentials', () => {
 		const result = validateSubscriptionInput(fd({ ...valid(), notify: '1', notify_days_before: '0' }));
 		assert.ok(result.ok);
+		if (!result.ok) return;
 		const fields = toWallosFields(result.data);
 		assert.equal(fields.notify, '1');
 		assert.equal(fields.notify_days_before, '0');
@@ -136,7 +174,9 @@ describe('input trust boundaries', () => {
 		assert.equal(fields.api_key, undefined);
 		assert.equal(toWallosFields(result.data, true).url, '');
 		assert.equal(toWallosFields(result.data, true).notes, '');
-		assert.equal(toWallosFields(result.data, true).category_id, '0');
+		assert.equal(toWallosFields(result.data, true).category_id, '');
+		assert.equal(toWallosFields(result.data, true).payment_method_id, '');
+		assert.equal(toWallosFields(result.data, true).notify_days_before, '0');
 	});
 });
 
@@ -161,6 +201,12 @@ describe('filterSubscriptions', () => {
 			paymentMethodId: '99'
 		});
 		assert.deepEqual(none, []);
+	});
+
+	it('coerces nullish upstream numbers to 0', () => {
+		assert.equal(coerceWallosNumber(null), 0);
+		assert.equal(coerceWallosNumber(undefined), 0);
+		assert.equal(coerceWallosNumber(7), 7);
 	});
 
 	it('always hides inactive', () => {
