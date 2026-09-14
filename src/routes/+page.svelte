@@ -21,12 +21,6 @@
 	let paymentMethodId = $state('');
 	let activeSubs = $derived(data.subscriptions.filter((s) => s.inactive === 0));
 	let activeCount = $derived(activeSubs.length);
-	let activeCategoryIds = $derived(new Set(activeSubs.map((s) => s.category_id)));
-	let activePaymentIds = $derived(new Set(activeSubs.map((s) => s.payment_method_id)));
-	let usedCategories = $derived(data.categories.filter((c) => activeCategoryIds.has(c.id)));
-	let usedPaymentMethods = $derived(data.paymentMethods.filter((m) => activePaymentIds.has(m.id)));
-let filterCategories = $derived(usedCategories.length > 0 ? usedCategories : data.categories);
-let filterPaymentMethods = $derived(usedPaymentMethods.length > 0 ? usedPaymentMethods : data.paymentMethods);
 	let hasFilters = $derived(Boolean(q || categoryId || paymentMethodId));
 	let openFilter = $state<'category' | 'payment' | null>(null);
 	function toggleFilter(which: 'category' | 'payment') {
@@ -35,8 +29,6 @@ let filterPaymentMethods = $derived(usedPaymentMethods.length > 0 ? usedPaymentM
 	function closeFilters() {
 		openFilter = null;
 	}
-	let categoryName = $derived(data.categories.find((c) => String(c.id) === categoryId)?.name ?? '');
-	let paymentName = $derived(data.paymentMethods.find((m) => String(m.id) === paymentMethodId)?.name ?? '');
 	let filtered = $derived(filterSubscriptions(data.subscriptions, { q: debouncedQ, categoryId, paymentMethodId }));
 	function clearAllFilters() {
 		clearTimeout(debounceTimer);
@@ -82,26 +74,40 @@ let filterPaymentMethods = $derived(usedPaymentMethods.length > 0 ? usedPaymentM
 						</button>
 					{/if}
 				</div>
+				{#await Promise.all([data.categories, data.paymentMethods])}
+					<p class="flex min-h-12 items-center text-sm text-muted-foreground" role="status">Loading filters…</p>
+				{:then [cats, pays]}
+					{@const activeCatIds = new Set(activeSubs.map((s) => s.category_id))}
+					{@const activePayIds = new Set(activeSubs.map((s) => s.payment_method_id))}
+					{@const usedCats = cats.filter((c) => activeCatIds.has(c.id))}
+					{@const usedPays = pays.filter((m) => activePayIds.has(m.id))}
+					{@const filterCats = usedCats.length > 0 ? usedCats : cats}
+					{@const filterPays = usedPays.length > 0 ? usedPays : pays}
+					{@const catName = filterCats.find((c) => String(c.id) === categoryId)?.name ?? ''}
+					{@const payName = filterPays.find((m) => String(m.id) === paymentMethodId)?.name ?? ''}
 				<details id="category-filter" class="filter-menu" open={openFilter === 'category'} ontoggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) openFilter = 'category'; else if (openFilter === 'category') openFilter = null; }}>
-					<summary aria-label="Filter by category{categoryName ? `: ${categoryName}` : ''}" aria-expanded={openFilter === 'category'} onclick={(e) => { e.preventDefault(); toggleFilter('category'); }} onkeydown={(e) => { if (e.key === 'Escape') closeFilters(); }} class="filter-menu-button {categoryId ? 'filter-menu-button-active' : ''}">
+					<summary aria-label="Filter by category{catName ? `: ${catName}` : ''}" aria-expanded={openFilter === 'category'} onclick={(e) => { e.preventDefault(); toggleFilter('category'); }} onkeydown={(e) => { if (e.key === 'Escape') closeFilters(); }} class="filter-menu-button {categoryId ? 'filter-menu-button-active' : ''}">
 						<svg aria-hidden="true" class="size-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h14l-5.5 6.5V16l-3 1.5v-6L3 5Z" stroke-linejoin="round" /></svg>
 						{#if categoryId}<span aria-hidden="true" class="absolute right-2 top-2 size-2 rounded-full bg-primary"></span>{/if}
 					</summary>
 					<div class="filter-menu-panel" role="listbox" aria-label="Category options">
 						<button type="button" role="option" aria-selected={categoryId === ''} onclick={() => { categoryId = ''; closeFilters(); }} class="filter-menu-option {categoryId === '' ? 'filter-menu-option-active' : ''}">All categories</button>
-						{#each filterCategories as c (c.id)}<button type="button" role="option" aria-selected={categoryId === String(c.id)} onclick={() => { categoryId = String(c.id); closeFilters(); }} class="filter-menu-option {categoryId === String(c.id) ? 'filter-menu-option-active' : ''}">{c.name}</button>{/each}
+						{#each filterCats as c (c.id)}<button type="button" role="option" aria-selected={categoryId === String(c.id)} onclick={() => { categoryId = String(c.id); closeFilters(); }} class="filter-menu-option {categoryId === String(c.id) ? 'filter-menu-option-active' : ''}">{c.name}</button>{/each}
 					</div>
 				</details>
 				<details id="payment-filter" class="filter-menu" open={openFilter === 'payment'} ontoggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open) openFilter = 'payment'; else if (openFilter === 'payment') openFilter = null; }}>
-					<summary aria-label="Filter by payment method{paymentName ? `: ${paymentName}` : ''}" aria-expanded={openFilter === 'payment'} onclick={(e) => { e.preventDefault(); toggleFilter('payment'); }} onkeydown={(e) => { if (e.key === 'Escape') closeFilters(); }} class="filter-menu-button {paymentMethodId ? 'filter-menu-button-active' : ''}">
+					<summary aria-label="Filter by payment method{payName ? `: ${payName}` : ''}" aria-expanded={openFilter === 'payment'} onclick={(e) => { e.preventDefault(); toggleFilter('payment'); }} onkeydown={(e) => { if (e.key === 'Escape') closeFilters(); }} class="filter-menu-button {paymentMethodId ? 'filter-menu-button-active' : ''}">
 						<svg aria-hidden="true" class="size-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5.5" width="14" height="9" rx="1.5" /><path d="M3 8.5h14M6.5 12h4" stroke-linecap="round" /></svg>
 						{#if paymentMethodId}<span aria-hidden="true" class="absolute right-2 top-2 size-2 rounded-full bg-primary"></span>{/if}
 					</summary>
 					<div class="filter-menu-panel" role="listbox" aria-label="Payment method options">
 						<button type="button" role="option" aria-selected={paymentMethodId === ''} onclick={() => { paymentMethodId = ''; closeFilters(); }} class="filter-menu-option {paymentMethodId === '' ? 'filter-menu-option-active' : ''}">All payment methods</button>
-						{#each filterPaymentMethods as m (m.id)}<button type="button" role="option" aria-selected={paymentMethodId === String(m.id)} onclick={() => { paymentMethodId = String(m.id); closeFilters(); }} class="filter-menu-option {paymentMethodId === String(m.id) ? 'filter-menu-option-active' : ''}">{m.name}</button>{/each}
+						{#each filterPays as m (m.id)}<button type="button" role="option" aria-selected={paymentMethodId === String(m.id)} onclick={() => { paymentMethodId = String(m.id); closeFilters(); }} class="filter-menu-option {paymentMethodId === String(m.id) ? 'filter-menu-option-active' : ''}">{m.name}</button>{/each}
 					</div>
 				</details>
+				{:catch}
+					<!-- Referensi gagal: list + search tetap jalan, filter disembunyikan. -->
+				{/await}
 			</div>
 		</div>
 
