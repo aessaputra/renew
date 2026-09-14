@@ -1,0 +1,75 @@
+# Renew
+
+Personal frontend using SvelteKit, Svelte, TypeScript, and Tailwind CSS.
+Single-owner Wallos subscription dashboard protected by Pocket ID OIDC.
+
+## Running locally
+
+Use Node.js 24 LTS and npm. Lockfile included for consistent installs.
+
+```sh
+npm ci
+npm run dev
+```
+
+Open the local address shown in the terminal.
+
+## Authentication
+
+Pocket ID OIDC Authorization Code + PKCE S256 only; no local password.
+Copy `.env.example` to `.env` (git-ignored) and fill in values; never commit `.env`.
+
+```sh
+cp .env.example .env
+npm start
+```
+
+- `ORIGIN` must be the exact public HTTPS URL (e.g. `https://subscriptions.example.com`).
+- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_ALLOWED_SUB` come from Pocket ID. Only the allowed subject gets a session.
+- Sessions are opaque server-side records (8-hour TTL, single Node process). Restart clears all sessions.
+- Logout is local only: `POST /auth/logout` ends the Renew session; the Pocket ID session stays active.
+- Missing or invalid config fails closed with 503 on private routes and login.
+
+## Subscriptions
+
+Set `WALLOS_BASE_URL` and `WALLOS_API_KEY` in `.env`. The key stays on the server;
+Wallos requests time out after 10 seconds. Missing configuration fails closed.
+
+| Route | Purpose |
+|---|---|
+| `/` | Active subscriptions, name search, category and payment filters |
+| `/subscriptions/[id]` | Details and deletion |
+| `/subscriptions/new` | Add a subscription |
+| `/subscriptions/[id]/edit` | Edit a subscription and reminders |
+
+Forms work without JavaScript. Search and filters require JavaScript.
+Categories, payment methods, currencies, and notification channels remain managed
+in Wallos. Cycle and frequency show Wallos numeric values; their labels are not assumed.
+Tests use local mock services and never modify production subscriptions.
+
+## Verify and build
+
+```sh
+npm run check
+npm run lint
+npm run build
+npm test
+npm run preview
+```
+
+`check` runs Svelte and TypeScript checks. `lint` runs ESLint (Svelte + TS).
+`test` builds then runs all unit and integration suites: authentication, validation,
+filtering, and subscription CRUD through local mock services.
+`preview` only checks the build locally, not the production server.
+
+## Batas scope
+
+- `openapi.yaml` dipertahankan sebagai referensi kontrak API.
+- Dashboard mencakup daftar, pencarian, filter, detail, tambah, edit, dan hapus subscriptions.
+- Tidak ada pengelolaan kategori, metode pembayaran, mata uang, atau pembayar di Renew.
+- Pengaturan kanal notifikasi tetap di Wallos utama.
+- Jangan memasukkan API key ke kode browser atau version control.
+- Sebelum deployment publik, konfigurasi autentikasi akses dan adapter produksi sesuai lingkungan hosting.
+
+Konfigurasi SvelteKit dan Tailwind berada di `vite.config.ts` sesuai scaffold resmi.
+Tidak ada perubahan konfigurasi ECC global.
