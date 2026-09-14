@@ -646,6 +646,19 @@ describe('mobile list semantics', () => {
   });
 });
 
+describe('mobile detail actions', () => {
+  it('offers edit before billing and keeps delete confirmation separate', async () => {
+    const r = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
+    assert.equal(r.status, 200);
+    const edit = r.body.indexOf('href="/subscriptions/1/edit"');
+    const billing = r.body.indexOf('id="billing-heading"');
+    assert.ok(edit >= 0 && billing > edit);
+    assert.match(r.body, /<details[\s\S]*<summary[\s\S]*Delete subscription/);
+    assert.match(r.body, /name="confirm"/);
+    assert.match(r.body, /value="yes"/);
+  });
+});
+
 describe('subscription mutations', () => {
 	it('preserves unsupported URLs for editing and requires correction or clearing on save', async () => {
 		const previous = F.subscriptions[0];
