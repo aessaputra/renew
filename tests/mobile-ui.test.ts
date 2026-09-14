@@ -27,3 +27,11 @@ it('application pages use responsive widths rather than a phone-only column', ()
     assert.ok(!text.includes('max-w-md'), path);
   }
 });
+
+it('form has responsive pairs and a visible reminder-days label', () => {
+  const form = source('src/lib/components/subscription-form.svelte');
+  assert.equal((form.match(/grid grid-cols-1 gap-4 sm:grid-cols-2/g) ?? []).length, 3);
+  assert.match(form, /for="reminder-days"/);
+  assert.match(form, /id="reminder-days"/);
+  assert.doesNotMatch(form, /placeholder:text-muted-foreground\/70/);
+});

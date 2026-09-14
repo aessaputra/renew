@@ -24,7 +24,7 @@
 	{#if data.referencesUnavailable}
 		<p role="status" class="rounded-[var(--radius-control)] border border-border bg-primary/5 px-4 py-3 text-sm text-muted-foreground">Reference data is unavailable. Submitted selections are preserved by ID.</p>
 	{/if}
-	<fieldset class="rounded-xl border border-border px-4 pt-4 pb-5">
+	<fieldset class="rounded-xl border border-border px-4 pt-4 pb-5 min-w-0 bg-surface">
 		<legend class="px-2 text-sm font-semibold text-muted-foreground">Billing</legend>
 		<div class="flex flex-col gap-4">
 	<label class="flex flex-col gap-2 text-base font-medium">
@@ -35,11 +35,11 @@
 			autocomplete="off"
 			maxlength="200"
 			value={values.name ?? ''}
-			class="min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-4 text-base font-normal text-foreground transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+			class="field-control"
 			placeholder="Netflix"
 		/>
 	</label>
-	<div class="flex flex-col gap-4">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<label class="flex min-w-0 flex-col gap-2 text-base font-medium">
 			Price
 			<input
@@ -50,7 +50,7 @@
 				required
 				inputmode="decimal"
 				value={values.price ?? ''}
-				class="min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-4 text-base font-normal text-foreground tabular-nums transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				class="field-control tabular-nums"
 				placeholder="12.99"
 			/>
 		</label>
@@ -60,7 +60,7 @@
 				name="currency_id"
 				required
 				value={values.currency_id ?? ''}
-				class="min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-base font-normal text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				class="field-control"
 			>
 				<option value="">Select</option>
 				{#if data.referencesUnavailable && values.currency_id}
@@ -72,7 +72,7 @@
 			</select>
 		</label>
 	</div>
-	<div class="flex flex-col gap-4">
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<label class="flex min-w-0 flex-col gap-2 text-base font-medium">
 			Frequency
 			<input
@@ -83,7 +83,7 @@
 				inputmode="numeric"
 				aria-describedby="frequency-help"
 				value={values.frequency ?? ''}
-				class="min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-4 text-base font-normal text-foreground tabular-nums transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				class="field-control tabular-nums"
 				placeholder="1"
 			/>
 		</label>
@@ -97,7 +97,7 @@
 				inputmode="numeric"
 				aria-describedby="frequency-help"
 				value={values.cycle ?? ''}
-				class="min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-4 text-base font-normal text-foreground tabular-nums transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				class="field-control tabular-nums"
 				placeholder="3"
 			/>
 		</label>
@@ -110,20 +110,20 @@
 			type="date"
 			required
 			value={values.next_payment ?? ''}
-			class="min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-4 text-base font-normal text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+			class="field-control"
 		/>
 	</label>
 		</div>
 	</fieldset>
 	<fieldset class="mt-5 rounded-xl border border-border px-4 pt-4 pb-5">
 		<legend class="px-2 text-sm font-semibold text-muted-foreground">Organization <span class="font-normal">(optional)</span></legend>
-		<div class="flex flex-col gap-4">
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<label class="flex min-w-0 flex-col gap-2 text-base font-medium">
 			Category
 			<select
 				name="category_id"
 				value={values.category_id ?? ''}
-				class="min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-base font-normal text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				class="field-control"
 			>
 				<option value="">None</option>
 				{#if data.referencesUnavailable && values.category_id}
@@ -139,7 +139,7 @@
 			<select
 				name="payment_method_id"
 				value={values.payment_method_id ?? ''}
-				class="min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-base font-normal text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				class="field-control"
 			>
 				<option value="">None</option>
 				{#if data.referencesUnavailable && values.payment_method_id}
@@ -164,19 +164,20 @@
 					class="size-6 shrink-0 accent-[var(--primary)]"
 				/>
 				<label for="notify" class="inline-flex min-h-12 flex-1 items-center text-base font-medium">Reminder</label>
-				<div class="flex items-center gap-2">
-					<input
-						name="notify_days_before"
-						type="number"
-						min="0"
-						max="365"
-						inputmode="numeric"
-						aria-label="Reminder days before"
-						value={values.notify_days_before ?? '7'}
-						class="min-h-12 w-24 rounded-[var(--radius-control)] border border-border bg-background px-3 text-base font-normal text-foreground tabular-nums transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-					/>
-					<span class="text-sm text-muted-foreground">days before</span>
-				</div>
+				<div class="flex w-full flex-col gap-2 sm:w-auto">
+  <label for="reminder-days" class="text-sm font-medium">Days before payment</label>
+  <input
+    id="reminder-days"
+    name="notify_days_before"
+    type="number"
+    min="0"
+    max="365"
+    inputmode="numeric"
+    aria-label="Reminder days before"
+    value={values.notify_days_before ?? '7'}
+    class="field-control sm:w-40"
+  />
+</div>
 			</div>
 			<label class="flex flex-col gap-2 text-base font-medium">
 				URL
@@ -186,7 +187,7 @@
 					inputmode="url"
 					maxlength="2048"
 					value={values.url ?? ''}
-					class="min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-4 text-base font-normal text-foreground transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+					class="field-control"
 					placeholder="https://example.com"
 				/>
 			</label>
@@ -197,7 +198,7 @@
 					rows="3"
 					maxlength="5000"
 					value={values.notes ?? ''}
-					class="min-h-24 rounded-[var(--radius-control)] border border-border bg-background px-4 py-3 text-base font-normal text-foreground transition-colors placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+					class="field-control min-h-28 resize-y py-3"
 					placeholder="Plan, renewal terms, cancellation notes"
 				></textarea>
 			</label>
@@ -205,7 +206,7 @@
 	</fieldset>
 	<button
 		type="submit" disabled={pending} aria-busy={pending}
-		class="mt-5 flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] bg-primary px-5 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-70"
+		class="primary-action mt-5 w-full sm:w-auto sm:min-w-40"
 	>
 		{pending ? 'Saving…' : 'Save'}
 	</button>
