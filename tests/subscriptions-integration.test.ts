@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import net from 'node:net';
@@ -657,6 +657,36 @@ describe('mobile detail actions', () => {
     assert.match(r.body, /name="confirm"/);
     assert.match(r.body, /value="yes"/);
   });
+});
+
+it('captures local fixture pages for responsive review', async () => {
+  const out = process.env.RENEW_UI_CAPTURE_DIR;
+  if (!out) return;
+  mkdirSync(out, { recursive: true });
+  const pages = [
+    ['/', 'list'],
+    ['/subscriptions/1', 'detail'],
+    ['/subscriptions/new', 'new'],
+    ['/subscriptions/1/edit', 'edit'],
+    ['/login', 'login'],
+    ['/subscriptions/999', 'error']
+  ];
+  for (const [path, name] of pages) {
+    const r = await request(`${ORIGIN}${path}`, {
+      ca: certFile,
+      jar: path === '/login' ? new Map() : jar
+    });
+    assert.equal(r.status, name === 'error' ? 404 : 200);
+    assert.ok(!r.body.includes(SECRET));
+    let html = r.body.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+    for (const match of html.matchAll(/<link\b[^>]*href="([^"]+\.css)"[^>]*>/g)) {
+      const css = await request(new URL(match[1], ORIGIN).href, { ca: certFile, jar });
+      assert.equal(css.status, 200);
+      html = html.replace(match[0], `<style>${css.body}</style>`);
+    }
+    html = html.replace(/<form\b/g, '<form onsubmit="return false"');
+    writeFileSync(join(out, `${name}.html`), html);
+  }
 });
 
 describe('subscription mutations', () => {

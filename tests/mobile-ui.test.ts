@@ -45,3 +45,20 @@ it('login and errors share safe shell and readable surfaces', () => {
     assert.ok(text.includes('primary-action'), path);
   }
 });
+
+it('every form section uses a shrinkable surface', () => {
+  const sections = source('src/lib/components/subscription-form.svelte').match(/<fieldset[^>]+>/g) ?? [];
+  assert.equal(sections.length, 3);
+  for (const section of sections) assert.match(section, /min-w-0 bg-surface/);
+});
+
+it('control boundaries use a contrasting neutral in both themes', () => {
+  assert.equal((source('src/routes/layout.css').match(/--border: var\(--color-stone-500\)/g) ?? []).length, 2);
+});
+
+it('centered shells do not override safe-area padding with utilities', () => {
+  for (const path of ['src/routes/login/+page.svelte', 'src/routes/+error.svelte']) {
+    const main = source(path).match(/<main[^>]*>/)?.[0] ?? '';
+    assert.doesNotMatch(main, /\b(?:p|px|py|pt|pb|pl|pr)-\d/);
+  }
+});

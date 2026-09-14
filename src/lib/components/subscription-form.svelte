@@ -115,7 +115,7 @@
 	</label>
 		</div>
 	</fieldset>
-	<fieldset class="mt-5 rounded-xl border border-border px-4 pt-4 pb-5">
+	<fieldset class="mt-5 rounded-xl border border-border px-4 pt-4 pb-5 min-w-0 bg-surface">
 		<legend class="px-2 text-sm font-semibold text-muted-foreground">Organization <span class="font-normal">(optional)</span></legend>
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 		<label class="flex min-w-0 flex-col gap-2 text-base font-medium">
@@ -152,7 +152,7 @@
 		</label>
 		</div>
 	</fieldset>
-	<fieldset class="mt-5 rounded-xl border border-border px-4 pt-4 pb-5">
+	<fieldset class="mt-5 rounded-xl border border-border px-4 pt-4 pb-5 min-w-0 bg-surface">
 		<legend class="px-2 text-sm font-semibold text-muted-foreground">Reminder &amp; notes <span class="font-normal">(optional)</span></legend>
 		<div class="flex flex-col gap-4">
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-3">

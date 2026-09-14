@@ -7,7 +7,7 @@
 	--primary: var(--color-emerald-800);
 	--primary-foreground: var(--color-stone-50);
 	--primary-hover: var(--color-emerald-900);
-	--border: var(--color-stone-300);
+	--border: var(--color-stone-500);
 	--ring: var(--color-emerald-800);
 	--radius-control: 0.5rem;
 	--surface: var(--color-stone-100);
@@ -22,7 +22,7 @@
 		--primary: var(--color-emerald-300);
 		--primary-foreground: var(--color-stone-950);
 		--primary-hover: var(--color-emerald-200);
-		--border: var(--color-stone-700);
+		--border: var(--color-stone-500);
 		--ring: var(--color-emerald-300);
 		--surface: var(--color-stone-900);
 		--danger: var(--color-red-300);
