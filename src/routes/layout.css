@@ -10,6 +10,8 @@
 	--border: var(--color-stone-300);
 	--ring: var(--color-emerald-800);
 	--radius-control: 0.5rem;
+	--surface: var(--color-stone-100);
+	--danger: var(--color-red-800);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,6 +24,8 @@
 		--primary-hover: var(--color-emerald-200);
 		--border: var(--color-stone-700);
 		--ring: var(--color-emerald-300);
+		--surface: var(--color-stone-900);
+		--danger: var(--color-red-300);
 	}
 }
 
@@ -34,6 +38,8 @@
 	--color-primary-hover: var(--primary-hover);
 	--color-border: var(--border);
 	--color-ring: var(--ring);
+	--color-surface: var(--surface);
+	--color-danger: var(--danger);
 }
 
 body {
@@ -55,6 +61,41 @@ input,
 select,
 textarea {
 	color-scheme: light dark;
+}
+
+@layer components {
+  .page-shell {
+    min-height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .page-shell :where(h1, dd, li) {
+    overflow-wrap: anywhere;
+  }
+
+  .field-control {
+    @apply min-h-12 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-base font-normal text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
+  }
+
+  .primary-action {
+    @apply inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] bg-primary px-5 text-base font-semibold text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-wait disabled:opacity-70;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .primary-action:hover {
+      background: var(--primary-hover);
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .page-shell {
+      padding-left: max(2rem, env(safe-area-inset-left, 0px));
+      padding-right: max(2rem, env(safe-area-inset-right, 0px));
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
