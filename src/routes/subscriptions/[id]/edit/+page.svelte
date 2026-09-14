@@ -29,10 +29,8 @@
 	});
 </script>
 
-<main
-	class="min-h-dvh bg-background px-4 pb-16 font-sans text-foreground sm:px-8 [padding-left:max(1rem,env(safe-area-inset-left))] [padding-right:max(1rem,env(safe-area-inset-right))]"
->
-	<div class="mx-auto w-full max-w-md text-left">
+<main class="page-shell bg-background font-sans text-foreground">
+	<div class="mx-auto w-full max-w-3xl text-left">
 		<a href="/" class="inline-flex min-h-12 items-center gap-2 rounded-[var(--radius-control)] text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
 			<span aria-hidden="true">←</span> Back to list
 		</a>

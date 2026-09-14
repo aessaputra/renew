@@ -16,8 +16,8 @@
 	<meta name="description" content="Renew — your subscriptions, in one place." />
 </svelte:head>
 
-<main class="min-h-dvh bg-background px-4 pb-16 font-sans text-foreground sm:px-8 [padding-left:max(1rem,env(safe-area-inset-left))] [padding-right:max(1rem,env(safe-area-inset-right))]">
-	<div class="mx-auto w-full max-w-md text-left">
+<main class="page-shell bg-background font-sans text-foreground">
+	<div class="mx-auto w-full max-w-5xl text-left">
 		<header class="flex min-h-16 items-center justify-between gap-4">
 			<a href="/" aria-label="Renew home" class="inline-flex min-h-12 items-center gap-2 rounded-[var(--radius-control)] font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
 				<span aria-hidden="true" class="flex size-8 items-center justify-center rounded-[var(--radius-control)] bg-primary text-base text-primary-foreground">r.</span>
