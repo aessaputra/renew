@@ -28,25 +28,30 @@
 			</form>
 		</header>
 
-		<h1 class="mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">Subscriptions</h1>
-		<p class="mt-2 text-base leading-relaxed text-muted-foreground">Your subscriptions, in one place.</p>
+		<div class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+		  <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Subscriptions</h1>
+		  <a href="/subscriptions/new" class="primary-action w-full sm:w-auto">Add subscription</a>
+		</div>
 
-		<p class="mt-6">
-			<a href="/subscriptions/new" class="flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] bg-primary px-5 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-				Add subscription
-			</a>
-		</p>
-
-		<div class="mt-6 flex flex-col gap-3">
-			<input type="search" bind:value={q} placeholder="Search subscriptions" aria-label="Search subscriptions" class="min-h-12 w-full rounded-[var(--radius-control)] border border-border bg-background px-4 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />
-			<select bind:value={categoryId} aria-label="Filter by category" class="min-h-12 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-				<option value="">All categories</option>
-				{#each data.categories as c (c.id)}<option value={String(c.id)}>{c.name}</option>{/each}
-			</select>
-			<select bind:value={paymentMethodId} aria-label="Filter by payment method" class="min-h-12 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-				<option value="">All payments</option>
-				{#each data.paymentMethods as m (m.id)}<option value={String(m.id)}>{m.name}</option>{/each}
-			</select>
+		<div class="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-border bg-surface p-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+		  <div class="flex min-w-0 flex-col gap-2">
+		    <label for="subscription-search" class="text-sm font-medium">Search subscriptions</label>
+		    <input id="subscription-search" type="search" bind:value={q} placeholder="Search by name" class="field-control" />
+		  </div>
+		  <div class="flex min-w-0 flex-col gap-2">
+		    <label for="category-filter" class="text-sm font-medium">Category</label>
+		    <select id="category-filter" bind:value={categoryId} aria-label="Filter by category" class="field-control">
+		      <option value="">All categories</option>
+		      {#each data.categories as c (c.id)}<option value={String(c.id)}>{c.name}</option>{/each}
+		    </select>
+		  </div>
+		  <div class="flex min-w-0 flex-col gap-2">
+		    <label for="payment-filter" class="text-sm font-medium">Payment method</label>
+		    <select id="payment-filter" bind:value={paymentMethodId} aria-label="Filter by payment method" class="field-control">
+		      <option value="">All payments</option>
+		      {#each data.paymentMethods as m (m.id)}<option value={String(m.id)}>{m.name}</option>{/each}
+		    </select>
+		  </div>
 		</div>
 
 		<div class="flex min-h-14 items-center justify-between gap-4 text-sm text-muted-foreground">
@@ -60,21 +65,22 @@
 				<p class="mt-2 text-sm text-muted-foreground">{activeCount === 0 ? 'Add your first subscription to get started.' : 'Try another search or clear your filters.'}</p>
 			</div>
 		{:else}
-			<ul class="flex flex-col divide-y divide-border border-y border-border">
-				{#each filtered as s (s.id)}
-					<li>
-						<a href="/subscriptions/{s.id}" class="flex min-h-12 flex-col items-start gap-1 py-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
-							<span class="break-words text-base font-medium [overflow-wrap:anywhere]">{s.name}</span>
-							<span class="text-sm text-muted-foreground tabular-nums">
-								{s.currencyCode} {s.price} · {s.next_payment || '—'}
-							</span>
-							{#if s.category_name || s.payment_method_name}
-								<span class="text-sm text-muted-foreground break-words">{[s.category_name, s.payment_method_name].filter(Boolean).join(' · ')}</span>
-							{/if}
-						</a>
-					</li>
-				{/each}
-			</ul>
+			<ul aria-label="Subscriptions" class="divide-y divide-border border-y border-border">
+  {#each filtered as s (s.id)}
+    <li>
+      <a href="/subscriptions/{s.id}" class="grid min-h-12 grid-cols-1 gap-2 rounded-[var(--radius-control)] px-2 py-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring md:grid-cols-[minmax(0,1fr)_auto] md:gap-x-6">
+        <span class="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]">{s.name}</span>
+        <span class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 tabular-nums md:row-span-2 md:flex-col md:items-end">
+          <span class="text-lg font-semibold">{s.currencyCode} {s.price}</span>
+          <span class="text-sm text-muted-foreground">Next payment {s.next_payment || 'Not set'}</span>
+        </span>
+        {#if s.category_name || s.payment_method_name}
+          <span class="min-w-0 break-words text-sm text-muted-foreground">{[s.category_name, s.payment_method_name].filter(Boolean).join(' · ')}</span>
+        {/if}
+      </a>
+    </li>
+  {/each}
+</ul>
 		{/if}
 	</div>
 </main>

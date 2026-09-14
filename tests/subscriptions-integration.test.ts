@@ -629,6 +629,23 @@ describe('upstream boundary', () => {
 	});
 });
 
+describe('mobile list semantics', () => {
+  it('renders visible search and filter labels', async () => {
+    const r = await request(`${ORIGIN}/`, { ca: certFile, jar });
+    assert.equal(r.status, 200);
+    for (const [id, label] of [
+      ['subscription-search', 'Search subscriptions'],
+      ['category-filter', 'Category'],
+      ['payment-filter', 'Payment method']
+    ]) {
+      assert.match(r.body, new RegExp(`<label[^>]*for="${id}"[^>]*>\\s*${label}\\s*</label>`));
+      assert.ok(r.body.includes(`id="${id}"`));
+    }
+    assert.match(r.body, /aria-label="Subscriptions"/);
+    assert.match(r.body, /Next payment/);
+  });
+});
+
 describe('subscription mutations', () => {
 	it('preserves unsupported URLs for editing and requires correction or clearing on save', async () => {
 		const previous = F.subscriptions[0];
