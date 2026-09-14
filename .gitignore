@@ -28,6 +28,7 @@ playwright-report/
 test-results/
 
 # Local editor state
+.vscode/
 .idea/
 *.swp
 *.swo
