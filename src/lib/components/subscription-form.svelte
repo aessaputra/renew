@@ -165,19 +165,19 @@
 				/>
 				<label for="notify" class="inline-flex min-h-12 flex-1 items-center text-base font-medium">Reminder</label>
 				<div class="flex w-full flex-col gap-2 sm:w-auto">
-  <label for="reminder-days" class="text-sm font-medium">Days before payment</label>
-  <input
-    id="reminder-days"
-    name="notify_days_before"
-    type="number"
-    min="0"
-    max="365"
-    inputmode="numeric"
-    aria-label="Reminder days before"
-    value={values.notify_days_before ?? '7'}
-    class="field-control sm:w-40"
-  />
-</div>
+					<label for="reminder-days" class="text-sm font-medium">Days before payment</label>
+					<input
+						id="reminder-days"
+						name="notify_days_before"
+						type="number"
+						min="0"
+						max="365"
+						inputmode="numeric"
+						aria-label="Reminder days before"
+						value={values.notify_days_before ?? '7'}
+						class="field-control sm:w-40"
+					/>
+				</div>
 			</div>
 			<label class="flex flex-col gap-2 text-base font-medium">
 				URL

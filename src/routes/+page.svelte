@@ -29,29 +29,29 @@
 		</header>
 
 		<div class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-		  <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Subscriptions</h1>
-		  <a href="/subscriptions/new" class="primary-action w-full sm:w-auto">Add subscription</a>
+			<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Subscriptions</h1>
+			<a href="/subscriptions/new" class="primary-action w-full sm:w-auto">Add subscription</a>
 		</div>
 
 		<div class="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-border bg-surface p-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-		  <div class="flex min-w-0 flex-col gap-2">
-		    <label for="subscription-search" class="text-sm font-medium">Search subscriptions</label>
-		    <input id="subscription-search" type="search" bind:value={q} placeholder="Search by name" class="field-control" />
-		  </div>
-		  <div class="flex min-w-0 flex-col gap-2">
-		    <label for="category-filter" class="text-sm font-medium">Category</label>
-		    <select id="category-filter" bind:value={categoryId} aria-label="Filter by category" class="field-control">
-		      <option value="">All categories</option>
-		      {#each data.categories as c (c.id)}<option value={String(c.id)}>{c.name}</option>{/each}
-		    </select>
-		  </div>
-		  <div class="flex min-w-0 flex-col gap-2">
-		    <label for="payment-filter" class="text-sm font-medium">Payment method</label>
-		    <select id="payment-filter" bind:value={paymentMethodId} aria-label="Filter by payment method" class="field-control">
-		      <option value="">All payments</option>
-		      {#each data.paymentMethods as m (m.id)}<option value={String(m.id)}>{m.name}</option>{/each}
-		    </select>
-		  </div>
+			<div class="flex min-w-0 flex-col gap-2">
+				<label for="subscription-search" class="text-sm font-medium">Search subscriptions</label>
+				<input id="subscription-search" type="search" bind:value={q} placeholder="Search by name" class="field-control" />
+			</div>
+			<div class="flex min-w-0 flex-col gap-2">
+				<label for="category-filter" class="text-sm font-medium">Category</label>
+				<select id="category-filter" bind:value={categoryId} aria-label="Filter by category" class="field-control">
+					<option value="">All categories</option>
+					{#each data.categories as c (c.id)}<option value={String(c.id)}>{c.name}</option>{/each}
+				</select>
+			</div>
+			<div class="flex min-w-0 flex-col gap-2">
+				<label for="payment-filter" class="text-sm font-medium">Payment method</label>
+				<select id="payment-filter" bind:value={paymentMethodId} aria-label="Filter by payment method" class="field-control">
+					<option value="">All payments</option>
+					{#each data.paymentMethods as m (m.id)}<option value={String(m.id)}>{m.name}</option>{/each}
+				</select>
+			</div>
 		</div>
 
 		<div class="flex min-h-14 items-center justify-between gap-4 text-sm text-muted-foreground">
@@ -66,21 +66,21 @@
 			</div>
 		{:else}
 			<ul aria-label="Subscriptions" class="divide-y divide-border border-y border-border">
-  {#each filtered as s (s.id)}
-    <li>
-      <a href="/subscriptions/{s.id}" class="grid min-h-12 grid-cols-1 gap-2 rounded-[var(--radius-control)] px-2 py-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring md:grid-cols-[minmax(0,1fr)_auto] md:gap-x-6">
-        <span class="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]">{s.name}</span>
-        <span class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 tabular-nums md:row-span-2 md:flex-col md:items-end">
-          <span class="text-lg font-semibold">{s.currencyCode} {s.price}</span>
-          <span class="text-sm text-muted-foreground">Next payment {s.next_payment || 'Not set'}</span>
-        </span>
-        {#if s.category_name || s.payment_method_name}
-          <span class="min-w-0 break-words text-sm text-muted-foreground">{[s.category_name, s.payment_method_name].filter(Boolean).join(' · ')}</span>
-        {/if}
-      </a>
-    </li>
-  {/each}
-</ul>
+				{#each filtered as s (s.id)}
+					<li>
+						<a href="/subscriptions/{s.id}" class="grid min-h-12 grid-cols-1 gap-2 rounded-[var(--radius-control)] px-2 py-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring md:grid-cols-[minmax(0,1fr)_auto] md:gap-x-6">
+							<span class="min-w-0 break-words text-base font-semibold [overflow-wrap:anywhere]">{s.name}</span>
+							<span class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 tabular-nums md:row-span-2 md:flex-col md:items-end">
+								<span class="text-lg font-semibold">{s.currencyCode} {s.price}</span>
+								<span class="text-sm text-muted-foreground">Next payment {s.next_payment || 'Not set'}</span>
+							</span>
+							{#if s.category_name || s.payment_method_name}
+								<span class="min-w-0 break-words text-sm text-muted-foreground">{[s.category_name, s.payment_method_name].filter(Boolean).join(' · ')}</span>
+							{/if}
+						</a>
+					</li>
+				{/each}
+			</ul>
 		{/if}
 	</div>
 </main>
