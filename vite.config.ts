@@ -1,7 +1,11 @@
 import tailwindcss from '@tailwindcss/vite';
-import adapter from '@sveltejs/adapter-vercel';
+import adapterNode from '@sveltejs/adapter-node';
+import adapterVercel from '@sveltejs/adapter-vercel';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+
+// ponytail: single vercel deploy; node adapter only for local integration tests that spawn `node build`.
+const adapter = process.env.ADAPTER === 'node' ? adapterNode : adapterVercel;
 
 export default defineConfig({
 	plugins: [
