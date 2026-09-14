@@ -44,6 +44,7 @@
 		restore: (value: unknown) => {
 			if (typeof value !== 'object' || value === null) return;
 			const v = value as Record<string, unknown>;
+			clearTimeout(debounceTimer);
 			if (typeof v.q === 'string') {
 				q = v.q;
 				debouncedQ = v.q;
