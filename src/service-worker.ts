@@ -10,6 +10,12 @@ const PRECACHE = [...build, ...files, ...prerendered].filter(
 );
 const OFFLINE_URL = '/offline';
 
+// ponytail: private HTML must never persist on device; only /offline may be cached as navigation.
+function isPrivateNavigation(pathname: string): boolean {
+	if (pathname === '/offline' || pathname === '/login') return false;
+	return pathname === '/' || pathname.startsWith('/subscriptions');
+}
+
 self.addEventListener('install', (event) => {
 	event.waitUntil(
 		(async () => {
@@ -44,8 +50,10 @@ self.addEventListener('fetch', (event) => {
 			(async () => {
 				try {
 					const fresh = await fetch(req);
-					const cache = await caches.open(CACHE);
-					cache.put(req, fresh.clone());
+					if (!isPrivateNavigation(url.pathname)) {
+						const cache = await caches.open(CACHE);
+						cache.put(req, fresh.clone());
+					}
 					return fresh;
 				} catch {
 					const cached = await caches.match(req);

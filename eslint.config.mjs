@@ -28,6 +28,6 @@ export default tseslint.config(
 		}
 	},
 	{
-		ignores: ['build/', '.svelte-kit/', 'node_modules/']
+		ignores: ['build/', '.svelte-kit/', '.vercel/', '.output/', 'node_modules/']
 	}
 );

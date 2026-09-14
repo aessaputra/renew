@@ -6,7 +6,7 @@ import {
 	listCategories,
 	readWallosConfig
 } from '$lib/server/wallos';
-import { currencyById, type SubscriptionRow } from '$lib/wallos';
+import { type SubscriptionRow } from '$lib/wallos';
 
 export const load: ServerLoad = async () => {
 	const config = readWallosConfig();
@@ -23,11 +23,12 @@ export const load: ServerLoad = async () => {
 		const code = err instanceof Error ? err.message : 'failed';
 		throw error(code === 'unavailable' ? 503 : 500);
 	}
+	const currencyCodeById = new Map(currs.map((c) => [c.id, c.code] as const));
 	const rows: SubscriptionRow[] = subs.map((s) => ({
 		id: s.id,
 		name: s.name,
 		price: s.price,
-		currencyCode: currencyById(currs, s.currency_id).code,
+		currencyCode: currencyCodeById.get(s.currency_id) ?? '',
 		next_payment: s.next_payment,
 		category_id: s.category_id,
 		category_name: s.category_name,

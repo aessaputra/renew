@@ -29,6 +29,19 @@ function withNoStore(response: Response, extra?: Record<string, string>): Respon
 	return response;
 }
 
+const PUBLIC_CACHEABLE_PREFIXES = ['/_app/immutable/', '/icons/'];
+const PUBLIC_CACHEABLE_EXACT = new Set([
+	'/manifest.webmanifest',
+	'/favicon.svg',
+	'/favicon-dark.svg',
+	'/offline'
+]);
+
+function isPublicCacheable(pathname: string): boolean {
+	if (PUBLIC_CACHEABLE_EXACT.has(pathname)) return true;
+	return PUBLIC_CACHEABLE_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
 	if (!configOrigin()) {
 		if (PUBLIC_ROUTES.has(event.route.id ?? '')) {
@@ -69,5 +82,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return withNoStore(new Response(null, { status: 303, headers: { location: '/login' } }));
 	}
 
-	return withNoStore(await resolve(event));
+	const response = await resolve(event);
+	if (isPublicCacheable(event.url.pathname)) {
+		response.headers.set('cache-control', 'public, max-age=31536000, immutable');
+		return response;
+	}
+	return withNoStore(response);
 };

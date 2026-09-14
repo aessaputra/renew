@@ -24,13 +24,28 @@ export function currencyById(
 	return { code: found?.code ?? '', symbol: found?.symbol ?? '' };
 }
 
+const formatterCache = new Map<string, Intl.NumberFormat>();
+
 export function formatPrice(amount: number, currencyCode: string): string {
 	const code = currencyCode.trim().toUpperCase();
 	const locale = code === 'IDR' ? 'id-ID' : 'en-US';
-	// Significant digits retain small fractions, including currencies with zero minor units.
-	const options = { maximumSignificantDigits: 21 };
+	// ponytail: cache per currency; list renders call this per row per keystroke.
+	const options = { maximumSignificantDigits: 21 } as const;
+	if (!code) {
+		return new Intl.NumberFormat(locale, options).format(amount);
+	}
+	let fmt = formatterCache.get(code);
+	if (!fmt) {
+		try {
+			fmt = new Intl.NumberFormat(locale, { ...options, style: 'currency', currency: code });
+		} catch {
+			const number = new Intl.NumberFormat(locale, options).format(amount);
+			return currencyCode.trim() ? `${currencyCode.trim()}\u00a0${number}` : number;
+		}
+		formatterCache.set(code, fmt);
+	}
 	try {
-		return new Intl.NumberFormat(locale, { ...options, style: 'currency', currency: code }).format(amount);
+		return fmt.format(amount);
 	} catch {
 		const number = new Intl.NumberFormat(locale, options).format(amount);
 		return currencyCode.trim() ? `${currencyCode.trim()}\u00a0${number}` : number;

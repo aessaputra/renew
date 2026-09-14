@@ -3,11 +3,28 @@
 
 	let { data } = $props();
 	let q = $state('');
+	let debouncedQ = $state('');
+	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+	function onSearchInput(value: string) {
+		q = value;
+		clearTimeout(debounceTimer);
+		debounceTimer = setTimeout(() => {
+			debouncedQ = value;
+		}, 150);
+	}
+	function clearSearch() {
+		clearTimeout(debounceTimer);
+		q = '';
+		debouncedQ = '';
+	}
 	let categoryId = $state('');
 	let paymentMethodId = $state('');
-	let activeCount = $derived(data.subscriptions.filter((s) => s.inactive === 0).length);
-let usedCategories = $derived(data.categories.filter((c) => data.subscriptions.some((s) => s.inactive === 0 && s.category_id === c.id)));
-let usedPaymentMethods = $derived(data.paymentMethods.filter((m) => data.subscriptions.some((s) => s.inactive === 0 && s.payment_method_id === m.id)));
+	let activeSubs = $derived(data.subscriptions.filter((s) => s.inactive === 0));
+	let activeCount = $derived(activeSubs.length);
+	let activeCategoryIds = $derived(new Set(activeSubs.map((s) => s.category_id)));
+	let activePaymentIds = $derived(new Set(activeSubs.map((s) => s.payment_method_id)));
+	let usedCategories = $derived(data.categories.filter((c) => activeCategoryIds.has(c.id)));
+	let usedPaymentMethods = $derived(data.paymentMethods.filter((m) => activePaymentIds.has(m.id)));
 let filterCategories = $derived(usedCategories.length > 0 ? usedCategories : data.categories);
 let filterPaymentMethods = $derived(usedPaymentMethods.length > 0 ? usedPaymentMethods : data.paymentMethods);
 	let hasFilters = $derived(Boolean(q || categoryId || paymentMethodId));
@@ -20,8 +37,14 @@ let filterPaymentMethods = $derived(usedPaymentMethods.length > 0 ? usedPaymentM
 	}
 	let categoryName = $derived(data.categories.find((c) => String(c.id) === categoryId)?.name ?? '');
 	let paymentName = $derived(data.paymentMethods.find((m) => String(m.id) === paymentMethodId)?.name ?? '');
-	// ponytail: client filtering suits a personal list; use server pagination for large datasets.
-	let filtered = $derived(filterSubscriptions(data.subscriptions, { q, categoryId, paymentMethodId }));
+	let filtered = $derived(filterSubscriptions(data.subscriptions, { q: debouncedQ, categoryId, paymentMethodId }));
+	function clearAllFilters() {
+		clearTimeout(debounceTimer);
+		q = '';
+		debouncedQ = '';
+		categoryId = '';
+		paymentMethodId = '';
+	}
 </script>
 
 <svelte:head>
@@ -52,9 +75,9 @@ let filterPaymentMethods = $derived(usedPaymentMethods.length > 0 ? usedPaymentM
 			<div class="flex min-w-0 items-stretch gap-2">
 				<div class="relative min-w-0 flex-1">
 					<svg aria-hidden="true" class="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="5.5" /><path d="m13.5 13.5 3 3" stroke-linecap="round" /></svg>
-					<input id="subscription-search" type="search" bind:value={q} placeholder="Search by name" aria-label="Search subscriptions" class="field-control py-2 pl-10 pr-11" />
+					<input id="subscription-search" type="search" value={q} oninput={(e) => onSearchInput(e.currentTarget.value)} placeholder="Search by name" aria-label="Search subscriptions" class="field-control py-2 pl-10 pr-11" />
 					{#if q}
-						<button type="button" aria-label="Clear search" onclick={() => { q = ''; }} class="absolute right-1 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+						<button type="button" aria-label="Clear search" onclick={clearSearch} class="absolute right-1 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
 							<svg aria-hidden="true" class="size-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l8 8M14 6l-8 8" stroke-linecap="round" /></svg>
 						</button>
 					{/if}
@@ -84,7 +107,7 @@ let filterPaymentMethods = $derived(usedPaymentMethods.length > 0 ? usedPaymentM
 
 		<div class="filter-status">
 			<p role="status" aria-live="polite">{filtered.length} of {activeCount} {activeCount === 1 ? 'subscription' : 'subscriptions'}</p>
-			{#if hasFilters}<button type="button" aria-label="Clear filters" onclick={() => { q = ''; categoryId = ''; paymentMethodId = ''; }} class="min-h-11 rounded-[var(--radius-control)] px-2 underline decoration-border underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">Clear</button>{/if}
+			{#if hasFilters}<button type="button" aria-label="Clear filters" onclick={clearAllFilters} class="min-h-11 rounded-[var(--radius-control)] px-2 underline decoration-border underline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">Clear</button>{/if}
 		</div>
 
 		{#if filtered.length === 0}
@@ -95,7 +118,7 @@ let filterPaymentMethods = $derived(usedPaymentMethods.length > 0 ? usedPaymentM
 					{#if activeCount === 0}
 						<a href="/subscriptions/new" class="primary-action primary-action-inline">Add subscription</a>
 					{:else}
-						<button type="button" aria-label="Clear filters" onclick={() => { q = ''; categoryId = ''; paymentMethodId = ''; }} class="primary-action primary-action-inline">Clear filters</button>
+						<button type="button" aria-label="Clear filters" onclick={clearAllFilters} class="primary-action primary-action-inline">Clear filters</button>
 					{/if}
 				</div>
 			</div>
