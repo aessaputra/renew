@@ -123,7 +123,7 @@ let filterPaymentMethods = $derived(usedPaymentMethods.length > 0 ? usedPaymentM
 				</div>
 			</div>
 		{:else}
-			<ul aria-label="Subscriptions" class="divide-y divide-border border-y border-border">
+			<ul aria-label="Subscriptions" class="divide-y divide-border border-y border-border" data-sveltekit-preload-data="tap" data-sveltekit-preload-code="viewport">
 				{#each filtered as s (s.id)}
 					<li>
 						<a href="/subscriptions/{s.id}" class="flex min-h-14 items-center gap-3 rounded-[var(--radius-control)] px-3 py-3.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
