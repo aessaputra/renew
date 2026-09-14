@@ -4,8 +4,6 @@
 
 	let { children } = $props();
 	let online = $state(true);
-	type InstallPromptEvent = Event & { prompt: () => void; userChoice: Promise<unknown> };
-	let installEvt = $state<InstallPromptEvent | null>(null);
 
 	onMount(() => {
 		online = navigator.onLine;
@@ -13,11 +11,6 @@
 		const down = () => (online = false);
 		window.addEventListener('online', up);
 		window.addEventListener('offline', down);
-		const bip = (e: Event) => {
-			e.preventDefault();
-			installEvt = e as InstallPromptEvent;
-		};
-		window.addEventListener('beforeinstallprompt', bip);
 		if ('serviceWorker' in navigator) {
 			navigator.serviceWorker.register('/service-worker.js', { scope: '/' }).catch(() => {});
 			navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
@@ -25,16 +18,8 @@
 		return () => {
 			window.removeEventListener('online', up);
 			window.removeEventListener('offline', down);
-			window.removeEventListener('beforeinstallprompt', bip);
 		};
 	});
-
-	async function install() {
-		if (!installEvt) return;
-		installEvt.prompt();
-		await installEvt.userChoice.catch(() => {});
-		installEvt = null;
-	}
 </script>
 
 {#if !online}
@@ -44,14 +29,3 @@
 {/if}
 
 {@render children()}
-
-{#if installEvt}
-	<button
-		type="button"
-		onclick={install}
-		class="primary-action"
-		style="position: fixed; right: 1rem; bottom: 1rem;"
-	>
-		Install Renew
-	</button>
-{/if}

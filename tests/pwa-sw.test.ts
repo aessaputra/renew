@@ -25,5 +25,5 @@ test('offline route exists and layout registers worker', () => {
 	assert.ok(existsSync(new URL('../src/routes/offline/+page.svelte', import.meta.url)));
 	const layout = readFileSync(new URL('../src/routes/+layout.svelte', import.meta.url), 'utf8');
 	assert.match(layout, /serviceWorker/);
-	assert.match(layout, /beforeinstallprompt|deferredPrompt/);
+	assert.doesNotMatch(layout, /beforeinstallprompt/);
 });
