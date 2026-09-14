@@ -217,8 +217,8 @@ it('home filters are icon buttons with dropdown menus beside search', () => {
   assert.match(home, /toggleFilter\('category'\)/);
   assert.match(home, /toggleFilter\('payment'\)/);
   assert.match(home, /closest\(['"]\.filter-menu['"]\)/);
-  assert.match(home, /data\.categories\.find/);
-  assert.match(home, /data\.paymentMethods\.find/);
+  assert.match(home, /Promise\.all\(\[data\.categories,\s*data\.paymentMethods\]\)/);
+  assert.match(home, /\{#await Promise\.all/);
   assert.match(home, /<details[^>]*id="category-filter"/);
   assert.match(home, /<details[^>]*id="payment-filter"/);
   assert.match(home, /<summary[^>]*aria-label="Filter by category/);
