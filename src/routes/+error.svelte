@@ -13,10 +13,8 @@
 	);
 </script>
 
-<main
-	class="flex min-h-dvh items-center justify-center bg-background px-4 py-10 font-sans text-foreground sm:px-8 [padding-left:max(1rem,env(safe-area-inset-left))] [padding-right:max(1rem,env(safe-area-inset-right))]"
->
-	<div class="w-full max-w-md text-left">
+<main class="page-shell page-shell-centered flex items-center justify-center bg-background font-sans text-foreground">
+	<div class="w-full max-w-md rounded-xl border border-border bg-surface p-6 text-left sm:p-8">
 		<p class="text-sm font-medium text-muted-foreground">Renew</p>
 		<h1 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
 			Something went wrong
@@ -27,7 +25,7 @@
 		<p class="mt-6">
 			<a
 				href="/"
-				class="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] bg-primary px-5 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				class="primary-action w-full sm:w-auto"
 			>
 				Back to home
 			</a>

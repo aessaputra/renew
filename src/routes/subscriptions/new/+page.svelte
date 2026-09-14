@@ -23,9 +23,9 @@
 		</h1>
 
 		{#if state.errors}
-			<ul role="alert" class="mt-6 rounded-[var(--radius-control)] border border-border px-4 py-3">
+			<ul role="alert" class="mt-6 rounded-[var(--radius-control)] border border-border bg-surface px-4 py-3 text-danger">
 				{#each state.errors as e (e)}
-					<li class="text-base text-foreground">{e}</li>
+					<li class="text-base">{e}</li>
 				{/each}
 			</ul>
 		{/if}

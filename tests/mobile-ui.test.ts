@@ -35,3 +35,13 @@ it('form has responsive pairs and a visible reminder-days label', () => {
   assert.match(form, /id="reminder-days"/);
   assert.doesNotMatch(form, /placeholder:text-muted-foreground\/70/);
 });
+
+it('login and errors share safe shell and readable surfaces', () => {
+  for (const path of ['src/routes/login/+page.svelte', 'src/routes/+error.svelte']) {
+    const text = source(path);
+    assert.ok(text.includes('page-shell'), path);
+    assert.ok(text.includes('bg-surface'), path);
+    assert.ok(text.includes('max-w-md'), path);
+    assert.ok(text.includes('primary-action'), path);
+  }
+});
