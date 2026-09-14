@@ -5,16 +5,23 @@ import { readFileSync, existsSync } from 'node:fs';
 test('manifest exists with installable fields', () => {
 	const p = new URL('../static/manifest.webmanifest', import.meta.url);
 	const raw = readFileSync(p, 'utf8');
-	const m = JSON.parse(raw);
+	const m = JSON.parse(raw) as {
+		display: string;
+		scope: string;
+		start_url: string;
+		name: string;
+		short_name: string;
+		icons: Array<{ sizes: string; purpose?: string }>;
+	};
 	assert.equal(m.display, 'standalone');
 	assert.equal(m.scope, '/');
 	assert.ok(m.start_url.startsWith('/'));
 	assert.ok(m.name.includes('Renew'));
 	assert.ok(m.short_name.length <= 12);
-	const sizes = m.icons.map((i: any) => i.sizes);
+	const sizes = m.icons.map((i) => i.sizes);
 	assert.ok(sizes.includes('192x192'), 'needs 192 icon');
 	assert.ok(sizes.includes('512x512'), 'needs 512 icon');
-	assert.ok(m.icons.some((i: any) => (i.purpose || '').includes('maskable')), 'needs maskable icon');
+	assert.ok(m.icons.some((i) => (i.purpose || '').includes('maskable')), 'needs maskable icon');
 });
 
 test('required icon PNGs exist and are PNG', () => {

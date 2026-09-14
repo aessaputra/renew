@@ -4,7 +4,8 @@
 
 	let { children } = $props();
 	let online = $state(true);
-	let installEvt = $state<any>(null);
+	type InstallPromptEvent = Event & { prompt: () => void; userChoice: Promise<unknown> };
+	let installEvt = $state<InstallPromptEvent | null>(null);
 
 	onMount(() => {
 		online = navigator.onLine;
@@ -14,7 +15,7 @@
 		window.addEventListener('offline', down);
 		const bip = (e: Event) => {
 			e.preventDefault();
-			installEvt = e;
+			installEvt = e as InstallPromptEvent;
 		};
 		window.addEventListener('beforeinstallprompt', bip);
 		if ('serviceWorker' in navigator) {
