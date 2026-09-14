@@ -4,7 +4,7 @@ import type { Handle } from '@sveltejs/kit';
 import { getSession, isValidHttpsOrigin } from '$lib/server/auth-state';
 
 const SESSION_COOKIE = 'renew_session';
-const PUBLIC_ROUTES = new Set(['/login', '/auth/login', '/auth/callback']);
+const PUBLIC_ROUTES = new Set(['/login', '/offline', '/auth/login', '/auth/callback']);
 
 function configOrigin(): string | null {
 	const origin = env.ORIGIN;

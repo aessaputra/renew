@@ -512,6 +512,13 @@ describe('route protection', () => {
 		assert.equal(r.headers['cache-control'], 'no-store');
 	});
 
+	it('anonymous GET /offline is public for the PWA fallback', async () => {
+		const r = await request(`${ORIGIN}/offline`, { ca: certFile, jar: new Map() });
+		assert.equal(r.status, 200);
+		assert.match(r.body, /You are offline/);
+		assert.equal(r.headers['cache-control'], 'no-store');
+	});
+
 	it('api and json/mutation requests get 401, not redirects', async () => {
 		const jar: Jar = new Map();
 		const api = await request(`${ORIGIN}/api/subscriptions`, { ca: certFile, jar });
