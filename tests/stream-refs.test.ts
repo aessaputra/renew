@@ -32,3 +32,11 @@ assert.match(src, /usedPays = pays\.filter\(\(m\) => activePayIds\.has\(m\.id\)\
 assert.match(src, /\{#each filterCats as c/);
 assert.match(src, /\{#each filterPays as m/);
 });
+
+test('list load reuses parent references instead of fetching them', () => {
+const src = readFileSync('src/routes/+page.server.ts', 'utf8');
+assert.match(src, /await parent\(\)/);
+assert.ok(!/listCurrencies\(config\)/.test(src), 'must not fetch currencies directly');
+assert.ok(!/listCategories\(config\)/.test(src), 'must not fetch categories directly');
+assert.ok(!/listPaymentMethods\(config\)/.test(src), 'must not fetch payment methods directly');
+});
