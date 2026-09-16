@@ -2,36 +2,32 @@ import { env } from '$env/dynamic/private';
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { isValidOrigin } from '$lib/server/auth-state';
 import {
-	listCurrencies,
-	listPaymentMethods,
-	listCategories,
 	mutateSubscription,
 	readWallosConfig
 } from '$lib/server/wallos';
 import { subscriptionFormValues, toWallosFields, validateSubscriptionInput } from '$lib/wallos';
+import type { WallosCategory, WallosCurrency, WallosPaymentMethod } from '$lib/wallos';
 
-export const load: ServerLoad = async ({ request }) => {
+interface ParentReferences {
+	references: { categories: WallosCategory[]; paymentMethods: WallosPaymentMethod[]; currencies: WallosCurrency[] };
+	referencesUnavailable: boolean;
+}
+
+export const load: ServerLoad = async ({ parent, request }) => {
 	const config = readWallosConfig();
 	if (!config) throw error(503);
-	try {
-		const [cats, pays, currs] = await Promise.all([
-			listCategories(config),
-			listPaymentMethods(config),
-			listCurrencies(config)
-		]);
-		return {
-			categories: cats.map((c) => ({ id: c.id, name: c.name })),
-			paymentMethods: pays.filter((m) => m.enabled === 1).map((m) => ({ id: m.id, name: m.name })),
-			currencies: currs.map((c) => ({ id: c.id, code: c.code, symbol: c.symbol }))
-		};
-	} catch (err) {
-		// ponytail: failed native POSTs use submitted IDs, not cached labels; reload to restore references.
+	const { references, referencesUnavailable } = (await parent()) as ParentReferences;
+	if (referencesUnavailable) {
 		if (request.method === 'POST') {
 			return { categories: [], paymentMethods: [], currencies: [], referencesUnavailable: true };
 		}
-		const code = err instanceof Error ? err.message : 'failed';
-		throw error(code === 'unavailable' ? 503 : 500);
+		throw error(503);
 	}
+	return {
+		categories: references.categories,
+		paymentMethods: references.paymentMethods.filter((m) => m.enabled === 1),
+		currencies: references.currencies
+	};
 };
 
 export const actions: Actions = {

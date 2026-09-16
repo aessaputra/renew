@@ -23,3 +23,13 @@ test('detail load reuses parent currencies instead of fetching them', () => {
 	assert.ok(!/listCurrencies\(config\)/.test(src), 'must not fetch currencies directly');
 	assert.match(src, /getSubscription\(config, id\)/);
 });
+
+test('new and edit loads reuse parent references', () => {
+	for (const p of ['src/routes/subscriptions/new/+page.server.ts', 'src/routes/subscriptions/[id]/edit/+page.server.ts']) {
+		const src = readFileSync(p, 'utf8');
+		assert.match(src, /await parent\(\)/, p);
+		assert.ok(!/listCurrencies\(config\)/.test(src), `${p} must not fetch currencies directly`);
+		assert.ok(!/listCategories\(config\)/.test(src), `${p} must not fetch categories directly`);
+		assert.ok(!/listPaymentMethods\(config\)/.test(src), `${p} must not fetch payment methods directly`);
+	}
+});
