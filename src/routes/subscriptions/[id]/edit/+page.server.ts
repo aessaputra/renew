@@ -20,6 +20,10 @@ export const load: ServerLoad = async ({ params, parent, request }) => {
 	const config = readWallosConfig();
 	if (!config) throw error(503);
 	const { references, referencesUnavailable } = (await parent()) as ParentReferences;
+	// ponytail: POST renders data-less outage form via referencesUnavailable; full upstream fetch resumes on restore.
+	if (referencesUnavailable && request.method === 'POST') {
+		return { subscription: null, categories: [], paymentMethods: [], currencies: [], referencesUnavailable: true };
+	}
 	let sub;
 	try {
 		sub = await getSubscription(config, id);
@@ -29,9 +33,6 @@ export const load: ServerLoad = async ({ params, parent, request }) => {
 		throw error(code === 'unavailable' ? 503 : 500);
 	}
 	if (referencesUnavailable) {
-		if (request.method === 'POST') {
-			return { subscription: null, categories: [], paymentMethods: [], currencies: [], referencesUnavailable: true };
-		}
 		throw error(503);
 	}
 	return {
