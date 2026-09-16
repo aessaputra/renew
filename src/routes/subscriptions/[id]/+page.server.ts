@@ -1,28 +1,28 @@
 import { env } from '$env/dynamic/private';
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { isValidOrigin } from '$lib/server/auth-state';
-import {
-	getSubscription,
-	listCurrencies,
-	mutateSubscription,
-	readWallosConfig
-} from '$lib/server/wallos';
-import { currencyById } from '$lib/wallos';
+import { getSubscription, mutateSubscription, readWallosConfig } from '$lib/server/wallos';
+import { currencyById, type WallosCurrency } from '$lib/wallos';
 
-export const load: ServerLoad = async ({ params }) => {
+interface ParentReferences {
+	currencies: WallosCurrency[];
+}
+
+export const load: ServerLoad = async ({ params, parent }) => {
 	const id = params.id ?? '';
 	if (!/^\d+$/.test(id)) throw error(404);
 	const config = readWallosConfig();
 	if (!config) throw error(503);
-	let sub, currs;
+	const { references } = (await parent()) as { references: ParentReferences };
+	let sub;
 	try {
-		[sub, currs] = await Promise.all([getSubscription(config, id), listCurrencies(config)]);
+		sub = await getSubscription(config, id);
 	} catch (err) {
 		const code = err instanceof Error ? err.message : 'failed';
 		if (code === 'notfound') throw error(404);
 		throw error(code === 'unavailable' ? 503 : 500);
 	}
-	const currency = currencyById(currs, sub.currency_id);
+	const currency = currencyById(references.currencies, sub.currency_id);
 	return {
 		subscription: { ...sub, currencyCode: currency.code, currencySymbol: currency.symbol }
 	};
