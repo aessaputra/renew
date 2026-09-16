@@ -1,9 +1,10 @@
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import type { Handle } from '@sveltejs/kit';
-import { getSession, isValidHttpsOrigin } from '$lib/server/auth-state';
+import { isValidHttpsOrigin, maybeRefreshSession, SESSION_ABSOLUTE_MS } from '$lib/server/auth-state';
 
 const SESSION_COOKIE = 'renew_session';
+const SESSION_COOKIE_MAX_AGE = Math.floor(SESSION_ABSOLUTE_MS / 1000);
 const PUBLIC_ROUTES = new Set(['/login', '/offline', '/auth/login', '/auth/callback']);
 
 function configOrigin(): string | null {
@@ -51,11 +52,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const sessionId = event.cookies.get(SESSION_COOKIE);
-	const session = sessionId ? getSession(sessionId) : null;
+	const checked = sessionId ? maybeRefreshSession(sessionId) : null;
+	const session = checked?.session ?? null;
 	if (sessionId && !session) {
 		event.cookies.delete(SESSION_COOKIE, { path: '/' });
 	}
 	event.locals.user = session ? { sub: session.sub } : null;
+	const refreshedId = checked?.refresh?.id ?? null;
+	if (refreshedId) {
+		event.cookies.set(SESSION_COOKIE, refreshedId, {
+			path: '/',
+			httpOnly: true,
+			secure: true,
+			sameSite: 'lax',
+			maxAge: SESSION_COOKIE_MAX_AGE
+		});
+	}
 
 	const routeId = event.route.id ?? '';
 	const pathname = event.url.pathname;

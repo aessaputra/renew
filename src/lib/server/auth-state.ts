@@ -1,7 +1,10 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export const TRANSACTION_TTL_MS = 5 * 60 * 1000;
-export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+export const SESSION_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
+export const SESSION_ABSOLUTE_MS = 30 * 24 * 60 * 60 * 1000;
+export const SESSION_REFRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+const CLOCK_SKEW_MS = 60 * 1000;
 // ponytail: stateless signed cookies are the ceiling for single-owner;
 // add a shared store only for server-side revocation or multi-user sessions.
 
@@ -14,7 +17,13 @@ export interface Transaction {
 
 export interface Session {
 	sub: string;
+	issuedAt: number;
 	expiresAt: number;
+}
+
+export interface SessionRefresh {
+	id: string;
+	session: Session;
 }
 
 function signingKey(): Buffer | null {
@@ -87,8 +96,8 @@ export function consumeTransaction(id: string, now: number = Date.now()): Transa
 export function createSession(sub: string, now: number = Date.now()): { id: string; session: Session } | null {
 	const key = signingKey();
 	if (!key || typeof sub !== 'string' || sub.length === 0) return null;
-	const session: Session = { sub, expiresAt: now + SESSION_TTL_MS };
-	const body = `s1.${Buffer.from(sub, 'utf8').toString('base64url')}.${session.expiresAt}`;
+	const session: Session = { sub, issuedAt: now, expiresAt: now + SESSION_IDLE_MS };
+	const body = `s2.${Buffer.from(sub, 'utf8').toString('base64url')}.${session.issuedAt}.${session.expiresAt}`;
 	return { id: `${body}.${sign(body, key)}`, session };
 }
 
@@ -97,11 +106,14 @@ export function getSession(id: string, now: number = Date.now()): Session | null
 	const key = signingKey();
 	if (!key) return null;
 	const parts = id.split('.');
-	if (parts.length !== 4 || parts[0] !== 's1') return null;
-	const body = `s1.${parts[1]}.${parts[2]}`;
-	if (!verify(body, parts[3], key)) return null;
-	const expiresAt = Number(parts[2]);
-	if (!Number.isSafeInteger(expiresAt) || now >= expiresAt) return null;
+	if (parts.length !== 5 || parts[0] !== 's2') return null;
+	const body = `s2.${parts[1]}.${parts[2]}.${parts[3]}`;
+	if (!verify(body, parts[4], key)) return null;
+	const issuedAt = Number(parts[2]);
+	const expiresAt = Number(parts[3]);
+	if (!Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(expiresAt)) return null;
+	if (issuedAt > now + CLOCK_SKEW_MS || now >= expiresAt) return null;
+	if (now >= issuedAt + SESSION_ABSOLUTE_MS) return null;
 	let decoded: string;
 	try {
 		decoded = Buffer.from(parts[1], 'base64url').toString('utf8');
@@ -110,7 +122,22 @@ export function getSession(id: string, now: number = Date.now()): Session | null
 	}
 	const sub = decoded;
 	if (!sub) return null;
-	return { sub, expiresAt };
+	return { sub, issuedAt, expiresAt };
+}
+
+export function maybeRefreshSession(
+	id: string,
+	now: number = Date.now()
+): { session: Session; refresh: SessionRefresh | null } | null {
+	const session = getSession(id, now);
+	if (!session) return null;
+	if (session.expiresAt - now >= SESSION_REFRESH_THRESHOLD_MS) return { session, refresh: null };
+	if (session.issuedAt + SESSION_ABSOLUTE_MS - now < SESSION_IDLE_MS) return { session, refresh: null };
+	const key = signingKey();
+	if (!key) return null;
+	const refreshed: Session = { sub: session.sub, issuedAt: session.issuedAt, expiresAt: now + SESSION_IDLE_MS };
+	const body = `s2.${Buffer.from(refreshed.sub, 'utf8').toString('base64url')}.${refreshed.issuedAt}.${refreshed.expiresAt}`;
+	return { session, refresh: { id: `${body}.${sign(body, key)}`, session: refreshed } };
 }
 
 export function isAllowedSubject(sub: string | null | undefined, allowedSub: string): boolean {

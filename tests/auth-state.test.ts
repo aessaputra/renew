@@ -10,7 +10,9 @@ import {
 	isValidHttpsOrigin,
 	isValidIssuer,
 	isValidOrigin,
-	SESSION_TTL_MS,
+	maybeRefreshSession,
+	SESSION_ABSOLUTE_MS,
+	SESSION_IDLE_MS,
 	TRANSACTION_TTL_MS
 } from '../src/lib/server/auth-state.ts';
 
@@ -83,15 +85,28 @@ describe('transactions', () => {
 });
 
 describe('sessions', () => {
-	it('create/get roundtrip with TTL', () => {
+	it('create/get roundtrip with idle TTL and issue time', () => {
 		const created = createSession('owner-sub', 2000)!;
-		assert.equal(created.session.expiresAt, 2000 + SESSION_TTL_MS);
+		assert.equal(created.session.issuedAt, 2000);
+		assert.equal(created.session.expiresAt, 2000 + SESSION_IDLE_MS);
 		assert.deepEqual(getSession(created.id, 2000), created.session);
 	});
 
-	it('expired session is invalid', () => {
+	it('idle expiry is invalid even before absolute', () => {
 		const created = createSession('owner-sub', 2000)!;
-		assert.equal(getSession(created.id, 2000 + SESSION_TTL_MS), null);
+		assert.equal(getSession(created.id, 2000 + SESSION_IDLE_MS), null);
+	});
+
+	it('absolute expiry wins over refreshed idle', () => {
+		const created = createSession('owner-sub', 2000)!;
+		assert.equal(getSession(created.id, 2000 + SESSION_ABSOLUTE_MS), null);
+	});
+
+	it('legacy s1 cookies are rejected', () => {
+		const created = createSession('owner-sub', 2000)!;
+		const parts = created.id.split('.');
+		assert.equal(parts[0], 's2');
+		assert.equal(getSession(`s1.${parts[1]}.${parts[3]}.${parts[4]}`, 2000), null);
 	});
 
 	it('empty sub rejected, invalid id safe', () => {
@@ -102,7 +117,7 @@ describe('sessions', () => {
 	it('tampered session is rejected', () => {
 		const created = createSession('owner-sub', 2000)!;
 		const parts = created.id.split('.');
-		const forged = `${parts[0]}.${parts[1]}.${parts[2]}.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`;
+		const forged = `${parts[0]}.${parts[1]}.${parts[2]}.${parts[3]}.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`;
 		assert.equal(getSession(forged, 2000), null);
 	});
 
@@ -125,6 +140,56 @@ describe('sessions', () => {
 	it('cross-type cookies rejected', () => {
 		const tx = createTransaction(TX(), 1000)!;
 		assert.equal(getSession(tx.id, 1000), null);
+	});
+
+	it('no refresh while idle window is fresh', () => {
+		const created = createSession('owner-sub', 2000)!;
+		const checked = maybeRefreshSession(created.id, 2000)!;
+		assert.deepEqual(checked.session, created.session);
+		assert.equal(checked.refresh, null);
+	});
+
+	it('refresh extends idle but keeps issue time', () => {
+		const created = createSession('owner-sub', 2000)!;
+		const late = 2000 + SESSION_IDLE_MS - 60 * 1000;
+		const checked = maybeRefreshSession(created.id, late)!;
+		assert.ok(checked.refresh);
+		assert.equal(checked.refresh.session.issuedAt, 2000);
+		assert.equal(checked.refresh.session.expiresAt, late + SESSION_IDLE_MS);
+		assert.deepEqual(getSession(checked.refresh.id, late), checked.refresh.session);
+	});
+
+	it('no refresh when absolute cap is near', () => {
+		const DAY = 24 * 60 * 60 * 1000;
+		const t0 = 2000;
+		let id = createSession('owner-sub', t0)!.id;
+		for (const d of [6.5, 13, 19.5]) {
+			const stepped = maybeRefreshSession(id, t0 + d * DAY)!;
+			assert.ok(stepped.refresh, `refresh at day ${d}`);
+			id = stepped.refresh.id;
+		}
+		const target = t0 + 26 * DAY;
+		const checked = maybeRefreshSession(id, target)!;
+		assert.ok(checked);
+		assert.equal(checked.refresh, null);
+		assert.deepEqual(getSession(id, target), checked.session);
+	});
+
+	it('future issue time rejected beyond skew', () => {
+		const created = createSession('owner-sub', 2000)!;
+		assert.equal(getSession(created.id, 2000 - 61 * 1000), null);
+	});
+
+	it('absolute rejects at cap after full refresh chain', () => {
+		const DAY = 24 * 60 * 60 * 1000;
+		const t0 = 2000;
+		let id = createSession('owner-sub', t0)!.id;
+		for (const d of [6.5, 13, 19.5]) {
+			id = maybeRefreshSession(id, t0 + d * DAY)!.refresh!.id;
+		}
+		const target = t0 + 26 * DAY;
+		assert.deepEqual(getSession(id, target), maybeRefreshSession(id, target)!.session);
+		assert.equal(getSession(id, t0 + SESSION_ABSOLUTE_MS), null);
 	});
 });
 

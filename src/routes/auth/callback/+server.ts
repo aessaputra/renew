@@ -1,5 +1,5 @@
 import { redirect, type RequestHandler } from '@sveltejs/kit';
-import { consumeTransaction, createSession } from '$lib/server/auth-state';
+import { consumeTransaction, createSession, SESSION_ABSOLUTE_MS } from '$lib/server/auth-state';
 import { discardServerConfig, exchangeCallback, getServerConfig } from '$lib/server/oidc';
 
 const TRANSACTION_COOKIE = 'renew_oidc';
@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		sameSite: 'lax',
 		secure: true,
 		path: '/',
-		maxAge: 8 * 60 * 60
+		maxAge: Math.floor(SESSION_ABSOLUTE_MS / 1000)
 	});
 	throw redirect(303, '/');
 };
