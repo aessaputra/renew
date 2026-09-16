@@ -592,7 +592,7 @@ describe('subscriptions list', () => {
 		} finally { F.subscriptions[0] = previous; }
 	});
 
-	it('limits filter dropdowns to references used by active subscriptions', async () => {
+	it('streams full reference lists for client-side filter menus', async () => {
 		const prevCats = F.categories;
 		const prevPays = F.paymentMethods;
 		try {
@@ -600,14 +600,16 @@ describe('subscriptions list', () => {
 			F.paymentMethods = [...prevPays, { id: 99, name: 'Unused Pay', icon: '', enabled: 1, order: 3, in_use: 0 }];
 			const r = await request(`${ORIGIN}/`, { ca: certFile, jar });
 			assert.equal(r.status, 200);
-			const categoryMenu = r.body.match(/<details[^>]*id="category-filter"[^>]*>[\s\S]*?<\/details>/)?.[0] ?? '';
-			const paymentMenu = r.body.match(/<details[^>]*id="payment-filter"[^>]*>[\s\S]*?<\/details>/)?.[0] ?? '';
-			assert.ok(categoryMenu.length > 0, 'category menu');
-			assert.ok(paymentMenu.length > 0, 'payment menu');
-			assert.doesNotMatch(categoryMenu, /Unused Category/);
-			assert.doesNotMatch(paymentMenu, /Unused Pay/);
-			assert.match(categoryMenu, /Video/);
-			assert.match(paymentMenu, /Card/);
+			const catsPayload = r.body.match(/resolve\(1,\s*\(\)\s*=>\s*(\[\[[\s\S]*?\]\])/)?.[1] ?? '';
+			const paysPayload = r.body.match(/resolve\(2,\s*\(\)\s*=>\s*(\[\[[\s\S]*?\]\])/)?.[1] ?? '';
+			assert.ok(catsPayload.length > 0, 'streamed categories');
+			assert.ok(paysPayload.length > 0, 'streamed payment methods');
+			// Server men-stream referensi mentah apa adanya; penyaringan ke yang
+			// terpakai dilakukan client setelah hydrate (lihat stream-refs.test.ts).
+			assert.match(catsPayload, /Video/);
+			assert.match(catsPayload, /Unused Category/);
+			assert.match(paysPayload, /Card/);
+			assert.match(paysPayload, /Unused Pay/);
 		} finally { F.categories = prevCats; F.paymentMethods = prevPays; }
 	});
 });
@@ -727,11 +729,12 @@ describe('mobile list semantics', () => {
     assert.doesNotMatch(r.body, /<label[^>]*for="subscription-search"[^>]*>\s*Search subscriptions\s*<\/label>/);
     assert.match(r.body, /aria-label="Search subscriptions"/);
     assert.ok(r.body.includes('id="subscription-search"'));
-    for (const id of ['category-filter', 'payment-filter']) {
-      assert.match(r.body, new RegExp(`<details[^>]*id="${id}"`));
-    }
-    assert.match(r.body, /Filter by category/);
-    assert.match(r.body, /Filter by payment method/);
+    // Referensi di-stream: SSR awal me-render skeleton pending + chunk resolve,
+    // menu details baru muncul setelah JS client jalan. Template details
+    // dijamin oleh stream-refs.test.ts (source assertion).
+    assert.match(r.body, /Loading filters…/);
+    assert.match(r.body, /resolve\(1,/);
+    assert.match(r.body, /resolve\(2,/);
     assert.match(r.body, /aria-label="Subscriptions"/);
     assert.match(r.body, /Next payment/);
   });
