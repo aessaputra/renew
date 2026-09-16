@@ -29,6 +29,8 @@ export const load: ServerLoad = async ({ depends }) => {
 			referencesUnavailable: false
 		};
 	} catch {
+		// eslint-disable-next-line no-console
+		console.error('Wallos reference fetch failed; returning empty references');
 		return {
 			references: { currencies: [], paymentMethods: [], categories: [] },
 			referencesUnavailable: true
