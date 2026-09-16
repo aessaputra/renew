@@ -418,6 +418,7 @@ before(async () => {
 			OIDC_CLIENT_ID: CLIENT_ID,
 			OIDC_CLIENT_SECRET: CLIENT_SECRET,
 			OIDC_ALLOWED_SUB: OWNER_SUB,
+			SESSION_SECRET: 'auth-suite-session-secret-0123456789abcdef',
 			NODE_EXTRA_CA_CERTS: certFile
 		},
 		appPort
@@ -442,6 +443,7 @@ before(async () => {
 			OIDC_CLIENT_ID: CLIENT_ID,
 			OIDC_CLIENT_SECRET: CLIENT_SECRET,
 			OIDC_ALLOWED_SUB: OWNER_SUB,
+			SESSION_SECRET: 'dead-provider-session-secret-0123456789abcdef',
 			NODE_EXTRA_CA_CERTS: certFile
 		},
 		deadPort

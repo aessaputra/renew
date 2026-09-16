@@ -1,5 +1,5 @@
 import { redirect, type RequestHandler } from '@sveltejs/kit';
-import { consumeTransaction, createSession, deleteSession } from '$lib/server/auth-state';
+import { consumeTransaction, createSession } from '$lib/server/auth-state';
 import { discardServerConfig, exchangeCallback, getServerConfig } from '$lib/server/oidc';
 
 const TRANSACTION_COOKIE = 'renew_oidc';
@@ -31,8 +31,6 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		const safe = code === 'denied' || code === 'expired' || code === 'unavailable' ? code : 'failed';
 		throw redirect(303, `/login?error=${safe}`);
 	}
-	const oldSession = cookies.get(SESSION_COOKIE);
-	if (oldSession) deleteSession(oldSession);
 	const created = createSession(sub);
 	if (!created) throw redirect(303, '/login?error=unavailable');
 	cookies.set(SESSION_COOKIE, created.id, {

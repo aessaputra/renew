@@ -499,6 +499,7 @@ before(async () => {
 			OIDC_CLIENT_ID: CLIENT_ID,
 			OIDC_CLIENT_SECRET: CLIENT_SECRET,
 			OIDC_ALLOWED_SUB: OWNER_SUB,
+			SESSION_SECRET: 'subs-suite-session-secret-0123456789abcdef',
 			WALLOS_BASE_URL: wallosBase,
 			WALLOS_API_KEY: SECRET,
 			NODE_EXTRA_CA_CERTS: certFile,

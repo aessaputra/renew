@@ -26,7 +26,9 @@ npm start
 
 - `ORIGIN` must be the exact public HTTPS URL (e.g. `https://subscriptions.example.com`).
 - `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_ALLOWED_SUB` come from Pocket ID. Only the allowed subject gets a session.
-- Sessions are opaque server-side records (8-hour TTL, single Node process). Restart clears all sessions.
+- `SESSION_SECRET` signs stateless session cookies (at least 32 bytes, e.g. `openssl rand -base64 32`). Sessions and login transactions survive across serverless instances; restart no longer clears them.
+- Sessions are stateless signed cookies (8-hour TTL). Logout clears the browser cookie only; there is no server-side revocation. Login transactions are single-use at the IdP auth-code level but the cookie itself is bearer within its 5-minute window.
+- Rotating `SESSION_SECRET` invalidates all sessions at once. The first deploy after this change logs everyone out once (old opaque cookies are rejected and cleared).
 - Logout is local only: `POST /auth/logout` ends the Renew session; the Pocket ID session stays active.
 - Missing or invalid config fails closed with 503 on private routes and login.
 

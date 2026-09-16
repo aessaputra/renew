@@ -1,5 +1,5 @@
 import { error, redirect, type RequestHandler } from '@sveltejs/kit';
-import { createTransaction, deleteTransaction, isValidOrigin } from '$lib/server/auth-state';
+import { createTransaction, isValidOrigin } from '$lib/server/auth-state';
 import { buildLoginChallenge, discardServerConfig, getServerConfig } from '$lib/server/oidc';
 
 const TRANSACTION_COOKIE = 'renew_oidc';
@@ -16,8 +16,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		throw error(403, 'Request not allowed.');
 	}
 	const challenge = await buildLoginChallenge(config);
-	const previous = cookies.get(TRANSACTION_COOKIE);
-	if (previous) deleteTransaction(previous);
 	const created = createTransaction({
 		state: challenge.state,
 		nonce: challenge.nonce,

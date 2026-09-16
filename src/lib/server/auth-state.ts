@@ -1,10 +1,9 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export const TRANSACTION_TTL_MS = 5 * 60 * 1000;
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
-export const MAX_TRANSACTIONS = 100;
-export const MAX_SESSIONS = 10;
-export const COOKIE_ID_BYTES = 32;
+// ponytail: stateless signed cookies are the ceiling for single-owner;
+// add a shared store only for server-side revocation or multi-user sessions.
 
 export interface Transaction {
 	state: string;
@@ -18,107 +17,100 @@ export interface Session {
 	expiresAt: number;
 }
 
-const transactions = new Map<string, Transaction>();
-const sessions = new Map<string, Session>();
+function signingKey(): Buffer | null {
+	const raw = process.env.SESSION_SECRET ?? '';
+	if (!raw) return null;
+	const key = Buffer.from(raw, 'utf8');
+	return key.length >= 32 ? key : null;
+}
 
-let cleanupTimer: ReturnType<typeof setInterval> | undefined;
+function sign(data: string, key: Buffer): string {
+	return createHmac('sha256', key).update(data, 'utf8').digest('base64url');
+}
 
-function digest(id: string): string {
-	return createHash('sha256').update(id, 'utf8').digest('hex');
+function verify(data: string, sig: string, key: Buffer): boolean {
+	const actual = Buffer.from(sig, 'utf8');
+	const expected = Buffer.from(sign(data, key), 'utf8');
+	return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+function validTokenInput(value: unknown): value is string {
+	return typeof value === 'string' && value.length > 0;
 }
 
 export function isValidCookieId(id: string): boolean {
-	if (typeof id !== 'string' || id.length === 0 || id.length > 256) return false;
-	return /^[A-Za-z0-9_-]+$/.test(id);
-}
-
-export function prune(now: number = Date.now()): void {
-	for (const [key, value] of transactions) {
-		if (now >= value.expiresAt) transactions.delete(key);
-	}
-	for (const [key, value] of sessions) {
-		if (now >= value.expiresAt) sessions.delete(key);
-	}
-}
-
-function ensureCleanupTimer(): void {
-	// ponytail: single-process in-memory state is the ceiling; upgrade to a
-	// shared store (e.g. Redis/database) if replicas or restart-persistent sessions are needed.
-	if (cleanupTimer) return;
-	cleanupTimer = setInterval(prune, 60_000);
-	// setInterval returns a Timeout in Node but a number under DOM libs; guard the call.
-	(cleanupTimer as unknown as { unref?: () => void }).unref?.();
-}
-
-export function dispose(): void {
-	if (cleanupTimer) {
-		clearInterval(cleanupTimer);
-		cleanupTimer = undefined;
-	}
-}
-
-export function reset(): void {
-	transactions.clear();
-	sessions.clear();
-	dispose();
-}
-
-export function newCookieId(): string {
-	return randomBytes(COOKIE_ID_BYTES).toString('base64url');
+	if (typeof id !== 'string' || id.length === 0 || id.length > 2048) return false;
+	return /^[A-Za-z0-9_.-]+$/.test(id);
 }
 
 export function createTransaction(
 	input: Omit<Transaction, 'expiresAt'>,
 	now: number = Date.now()
 ): { id: string; transaction: Transaction } | null {
-	prune(now);
-	ensureCleanupTimer();
-	if (transactions.size >= MAX_TRANSACTIONS) return null;
-	const id = newCookieId();
+	const key = signingKey();
+	if (
+		!key ||
+		!validTokenInput(input.state) ||
+		!validTokenInput(input.nonce) ||
+		!validTokenInput(input.codeVerifier)
+	) {
+		return null;
+	}
 	const transaction: Transaction = { ...input, expiresAt: now + TRANSACTION_TTL_MS };
-	transactions.set(digest(id), transaction);
-	return { id, transaction };
+	const payload = Buffer.from(
+		JSON.stringify({ s: input.state, n: input.nonce, v: input.codeVerifier, e: transaction.expiresAt }),
+		'utf8'
+	).toString('base64url');
+	const body = `t1.${payload}`;
+	return { id: `${body}.${sign(body, key)}`, transaction };
 }
 
 export function consumeTransaction(id: string, now: number = Date.now()): Transaction | null {
 	if (!isValidCookieId(id)) return null;
-	const key = digest(id);
-	const transaction = transactions.get(key);
-	transactions.delete(key);
-	if (!transaction || now >= transaction.expiresAt) return null;
-	return transaction;
-}
-
-export function deleteTransaction(id: string): void {
-	if (!isValidCookieId(id)) return;
-	transactions.delete(digest(id));
+	const key = signingKey();
+	if (!key) return null;
+	const parts = id.split('.');
+	if (parts.length !== 3 || parts[0] !== 't1') return null;
+	const body = `t1.${parts[1]}`;
+	if (!verify(body, parts[2], key)) return null;
+	let obj: { s?: unknown; n?: unknown; v?: unknown; e?: unknown };
+	try {
+		obj = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+	} catch {
+		return null;
+	}
+	if (!validTokenInput(obj.s) || !validTokenInput(obj.n) || !validTokenInput(obj.v)) return null;
+	if (!Number.isSafeInteger(obj.e) || now >= (obj.e as number)) return null;
+	return { state: obj.s, nonce: obj.n, codeVerifier: obj.v, expiresAt: obj.e as number };
 }
 
 export function createSession(sub: string, now: number = Date.now()): { id: string; session: Session } | null {
-	if (typeof sub !== 'string' || sub.length === 0) return null;
-	prune(now);
-	ensureCleanupTimer();
-	if (sessions.size >= MAX_SESSIONS) return null;
-	const id = newCookieId();
+	const key = signingKey();
+	if (!key || typeof sub !== 'string' || sub.length === 0) return null;
 	const session: Session = { sub, expiresAt: now + SESSION_TTL_MS };
-	sessions.set(digest(id), session);
-	return { id, session };
+	const body = `s1.${Buffer.from(sub, 'utf8').toString('base64url')}.${session.expiresAt}`;
+	return { id: `${body}.${sign(body, key)}`, session };
 }
 
 export function getSession(id: string, now: number = Date.now()): Session | null {
 	if (!isValidCookieId(id)) return null;
-	const key = digest(id);
-	const session = sessions.get(key);
-	if (!session || now >= session.expiresAt) {
-		if (session) sessions.delete(key);
+	const key = signingKey();
+	if (!key) return null;
+	const parts = id.split('.');
+	if (parts.length !== 4 || parts[0] !== 's1') return null;
+	const body = `s1.${parts[1]}.${parts[2]}`;
+	if (!verify(body, parts[3], key)) return null;
+	const expiresAt = Number(parts[2]);
+	if (!Number.isSafeInteger(expiresAt) || now >= expiresAt) return null;
+	let decoded: string;
+	try {
+		decoded = Buffer.from(parts[1], 'base64url').toString('utf8');
+	} catch {
 		return null;
 	}
-	return session;
-}
-
-export function deleteSession(id: string): void {
-	if (!isValidCookieId(id)) return;
-	sessions.delete(digest(id));
+	const sub = decoded;
+	if (!sub) return null;
+	return { sub, expiresAt };
 }
 
 export function isAllowedSubject(sub: string | null | undefined, allowedSub: string): boolean {

@@ -4,49 +4,42 @@ import {
 	createSession,
 	createTransaction,
 	consumeTransaction,
-	deleteSession,
-	deleteTransaction,
-	dispose,
 	getSession,
 	isAllowedSubject,
 	isValidCookieId,
 	isValidHttpsOrigin,
 	isValidIssuer,
 	isValidOrigin,
-	newCookieId,
-	prune,
-	reset,
-	MAX_SESSIONS,
-	MAX_TRANSACTIONS,
 	SESSION_TTL_MS,
 	TRANSACTION_TTL_MS
 } from '../src/lib/server/auth-state.ts';
 
 const TX = () => ({ state: 's', nonce: 'n', codeVerifier: 'v' });
+const OLD_SECRET = process.env.SESSION_SECRET;
 
-beforeEach(() => reset());
-afterEach(() => reset());
+beforeEach(() => {
+	process.env.SESSION_SECRET = 'test-session-secret-0123456789abcdef';
+});
+afterEach(() => {
+	if (OLD_SECRET === undefined) delete process.env.SESSION_SECRET;
+	else process.env.SESSION_SECRET = OLD_SECRET;
+});
 
 describe('cookie ids', () => {
-	it('newCookieId is unique base64url', () => {
-		const a = newCookieId();
-		const b = newCookieId();
-		assert.notEqual(a, b);
-		assert.ok(isValidCookieId(a));
+	it('signed cookies are valid ids with size cap', () => {
+		const created = createTransaction(TX(), 1000)!;
+		assert.ok(isValidCookieId(created.id));
 		assert.equal(isValidCookieId(''), false);
-		assert.equal(isValidCookieId('a'.repeat(257)), false);
+		assert.equal(isValidCookieId('a'.repeat(2049)), false);
 		assert.equal(isValidCookieId('bad id!'), false);
 	});
 });
 
 describe('transactions', () => {
-	it('create/consume roundtrip, single-use', () => {
-		const created = createTransaction(TX(), 1000);
-		assert.ok(created);
+	it('create/consume roundtrip with TTL', () => {
+		const created = createTransaction(TX(), 1000)!;
 		assert.equal(created.transaction.expiresAt, 1000 + TRANSACTION_TTL_MS);
-		const got = consumeTransaction(created.id, 1000);
-		assert.deepEqual(got, created.transaction);
-		assert.equal(consumeTransaction(created.id, 1000), null);
+		assert.deepEqual(consumeTransaction(created.id, 1000), created.transaction);
 	});
 
 	it('expired transaction is invalid', () => {
@@ -59,45 +52,79 @@ describe('transactions', () => {
 		assert.equal(consumeTransaction('!!!', 1000), null);
 	});
 
-	it('deleteTransaction removes entry', () => {
+	it('tampered transaction is rejected', () => {
 		const created = createTransaction(TX(), 1000)!;
-		deleteTransaction(created.id);
-		assert.equal(consumeTransaction(created.id, 1000), null);
-		deleteTransaction('!!!'); // no throw
+		const parts = created.id.split('.');
+		const forged = `${parts[0]}.${parts[1]}.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`;
+		assert.equal(consumeTransaction(forged, 1000), null);
 	});
 
-	it('capacity bounded, prune frees expired', () => {
-		for (let i = 0; i < MAX_TRANSACTIONS; i++) assert.ok(createTransaction(TX(), 1000));
+	it('missing secret fails closed', () => {
+		delete process.env.SESSION_SECRET;
 		assert.equal(createTransaction(TX(), 1000), null);
-		prune(1000 + TRANSACTION_TTL_MS);
-		assert.ok(createTransaction(TX(), 1000 + TRANSACTION_TTL_MS));
+	});
+
+	it('short secret fails closed', () => {
+		process.env.SESSION_SECRET = 'short';
+		assert.equal(createTransaction(TX(), 1000), null);
+	});
+
+	it('wrong secret rejects foreign cookies', () => {
+		const created = createTransaction(TX(), 1000)!;
+		process.env.SESSION_SECRET = 'different-secret-0123456789abcdef';
+		assert.equal(consumeTransaction(created.id, 1000), null);
+	});
+
+	it('cross-type and legacy cookies rejected', () => {
+		const session = createSession('owner-sub', 2000)!;
+		assert.equal(consumeTransaction(session.id, 2000), null);
+		assert.equal(consumeTransaction('abc123base64url', 2000), null);
 	});
 });
 
 describe('sessions', () => {
-	it('create/get/delete roundtrip with TTL', () => {
+	it('create/get roundtrip with TTL', () => {
 		const created = createSession('owner-sub', 2000)!;
 		assert.equal(created.session.expiresAt, 2000 + SESSION_TTL_MS);
 		assert.deepEqual(getSession(created.id, 2000), created.session);
-		deleteSession(created.id);
-		assert.equal(getSession(created.id, 2000), null);
 	});
 
-	it('expired session is invalid and cleaned', () => {
+	it('expired session is invalid', () => {
 		const created = createSession('owner-sub', 2000)!;
-		assert.equal(getSession(created.id, 2000 + SESSION_TTL_MS), null);
 		assert.equal(getSession(created.id, 2000 + SESSION_TTL_MS), null);
 	});
 
 	it('empty sub rejected, invalid id safe', () => {
 		assert.equal(createSession('', 2000), null);
 		assert.equal(getSession('!!!', 2000), null);
-		deleteSession('!!!'); // no throw
 	});
 
-	it('capacity bounded', () => {
-		for (let i = 0; i < MAX_SESSIONS; i++) assert.ok(createSession(`sub-${i}`, 2000));
-		assert.equal(createSession('extra', 2000), null);
+	it('tampered session is rejected', () => {
+		const created = createSession('owner-sub', 2000)!;
+		const parts = created.id.split('.');
+		const forged = `${parts[0]}.${parts[1]}.${parts[2]}.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`;
+		assert.equal(getSession(forged, 2000), null);
+	});
+
+	it('missing secret fails closed', () => {
+		delete process.env.SESSION_SECRET;
+		assert.equal(createSession('owner-sub', 2000), null);
+	});
+
+	it('short secret fails closed', () => {
+		process.env.SESSION_SECRET = 'short';
+		assert.equal(createSession('owner-sub', 2000), null);
+	});
+
+	it('wrong secret rejects foreign cookies', () => {
+		const created = createSession('owner-sub', 2000)!;
+		process.env.SESSION_SECRET = 'different-secret-0123456789abcdef';
+		assert.equal(getSession(created.id, 2000), null);
+	});
+
+	it('cross-type cookies rejected', () => {
+		const tx = createTransaction(TX(), 1000)!;
+		assert.equal(getSession(tx.id, 1000), null);
 	});
 });
 
@@ -136,14 +163,5 @@ describe('validators', () => {
 		assert.equal(isValidIssuer('https://id.example.com?a=b'), false);
 		assert.equal(isValidIssuer('https://id.example.com#x'), false);
 		assert.equal(isValidIssuer('https://u@id.example.com'), false);
-	});
-});
-
-describe('cleanup timer', () => {
-	it('dispose leaves no live handle', () => {
-		createTransaction(TX(), 1000);
-		dispose();
-		assert.ok(createTransaction(TX(), 1000));
-		dispose();
 	});
 });
