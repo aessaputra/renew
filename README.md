@@ -1,7 +1,5 @@
 # Renew
 
-![Renew icon](static/favicon.svg)
-
 A personal, single-owner dashboard for [Wallos](https://github.com/ellite/Wallos) subscriptions. Renew provides a mobile-friendly view for browsing and managing subscriptions; Wallos remains the source of truth.
 
 ![Renew subscriptions dashboard](static/WlJ1Ko5XIF-700.webp)
