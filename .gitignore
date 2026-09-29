@@ -17,18 +17,12 @@ Thumbs.db
 .env.*
 !.env.example
 
-# Local agent state
-.claude/
-.hermes/
-
 # Logs and test artifacts
 *.log
 coverage/
 playwright-report/
 test-results/
 
-# One-off local tooling (e.g. icon generators); never tracked
-/scripts/
 
 # Local editor state
 .vscode/
