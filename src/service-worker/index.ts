@@ -1,13 +1,20 @@
-/// <reference types="@sveltejs/kit" />
+/// <reference no-default-lib="true"/>
+/// <reference lib="esnext" />
 /// <reference lib="webworker" />
-import { build, files, prerendered, version } from '$service-worker';
-
-declare let self: ServiceWorkerGlobalScope;
+import { self } from '$app/service-worker';
+import { version } from '$app/env';
+import { assets, immutable, prerendered } from '$app/manifest';
+import { asset } from '$app/paths';
 
 const CACHE = `renew-${version}`;
-const PRECACHE = [...build, ...files, ...prerendered].filter(
-	(u) => u !== '/service-worker.js' && !u.endsWith('.br') && !u.endsWith('.gz')
-);
+
+// immutable build output precached via manifest; static assets resolved to absolute paths.
+// prerendered pages (/offline) included so fallback works without network.
+const PRECACHE: string[] = [
+	...immutable.map((entry) => entry.path),
+	...assets.map((a) => asset(a.path)),
+	...prerendered.map((page) => page.path)
+];
 const OFFLINE_URL = '/offline';
 
 // ponytail: private HTML must never persist on device; only /offline may be cached as navigation.

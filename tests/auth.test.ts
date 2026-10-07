@@ -202,6 +202,14 @@ function proxyHandler(appPort: number) {
 		cReq.on('end', () => {
 			const headers: Record<string, string | string[] | undefined> = { ...cReq.headers };
 			headers.host = `127.0.0.1:${appPort}`;
+			// Tell adapter-node the public authority (Kit 3 derives self-origin
+			// from these when PROTOCOL/HOST/PORT_HEADER are configured).
+			// Host carries no port: adapter appends PORT_HEADER itself.
+			const publicHost = String(cReq.headers.host ?? '').split(':')[0] || '127.0.0.1';
+			const publicPort = String(cReq.headers.host ?? '').split(':')[1] ?? '';
+			headers['x-forwarded-host'] = publicHost;
+			headers['x-forwarded-proto'] = 'https';
+			if (publicPort) headers['x-forwarded-port'] = publicPort;
 			delete headers.connection;
 			const fwd = http.request(
 				{ host: '127.0.0.1', port: appPort, path: cReq.url, method: cReq.method, headers },
@@ -419,7 +427,10 @@ before(async () => {
 			OIDC_CLIENT_SECRET: CLIENT_SECRET,
 			OIDC_ALLOWED_SUB: OWNER_SUB,
 			SESSION_SECRET: 'auth-suite-session-secret-0123456789abcdef',
-			NODE_EXTRA_CA_CERTS: certFile
+			NODE_EXTRA_CA_CERTS: certFile,
+			PROTOCOL_HEADER: 'x-forwarded-proto',
+			HOST_HEADER: 'x-forwarded-host',
+			PORT_HEADER: 'x-forwarded-port'
 		},
 		appPort
 	);
@@ -531,7 +542,13 @@ describe('route protection', () => {
 			headers: { accept: 'application/json' }
 		});
 		assert.equal(jsonReq.status, 401);
-		const mutation = await request(`${ORIGIN}/`, { method: 'POST', ca: certFile, jar });
+		const mutation = await request(`${ORIGIN}/`, {
+			method: 'POST',
+			ca: certFile,
+			jar,
+			// Non-form content-type bypasses Kit 3 CSRF so the app's own 401 is exercised.
+			headers: { 'content-type': 'application/json' }
+		});
 		assert.equal(mutation.status, 401);
 	});
 });
@@ -577,11 +594,17 @@ describe('login page copy', () => {
 describe('login CSRF', () => {
 	it('rejects POST without exact Origin', async () => {
 		const jar: Jar = new Map();
-		const missing = await request(`${ORIGIN}/auth/login`, { method: 'POST', ca: certFile, jar });
+		// Non-form content-type bypasses Kit 3 CSRF so the app's own origin check is exercised.
+		const missing = await request(`${ORIGIN}/auth/login`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			ca: certFile,
+			jar
+		});
 		assert.equal(missing.status, 403);
 		const wrong = await request(`${ORIGIN}/auth/login`, {
 			method: 'POST',
-			headers: { origin: 'https://evil.example' },
+			headers: { origin: 'https://evil.example', 'content-type': 'application/json' },
 			ca: certFile,
 			jar
 		});
@@ -661,7 +684,12 @@ describe('logout', () => {
 		const stillIn = await request(`${ORIGIN}/`, { ca: certFile, jar });
 		assert.equal(stillIn.status, 200);
 
-		const noOrigin = await request(`${ORIGIN}/auth/logout`, { method: 'POST', ca: certFile, jar });
+		const noOrigin = await request(`${ORIGIN}/auth/logout`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			ca: certFile,
+			jar
+		});
 		assert.equal(noOrigin.status, 403);
 
 		const out = await request(`${ORIGIN}/auth/logout`, {
@@ -691,7 +719,10 @@ describe('fail-closed configuration', () => {
 		assert.equal(priv.status, 503);
 		const loginPage = await plainRequest(emptyBase, '/login');
 		assert.equal(loginPage.status, 200);
-		const post = await plainRequest(emptyBase, '/auth/login', { method: 'POST', headers: { origin: '' } });
+		const post = await plainRequest(emptyBase, '/auth/login', {
+			method: 'POST',
+			headers: { origin: '', 'content-type': 'application/json' }
+		});
 		assert.equal(post.status, 503);
 	});
 
@@ -699,7 +730,7 @@ describe('fail-closed configuration', () => {
 		writeFileSync(join(tmp, 'keepalive'), 'x');
 		const post = await plainRequest(deadBase, '/auth/login', {
 			method: 'POST',
-			headers: { origin: 'https://127.0.0.1:1' }
+			headers: { origin: 'https://127.0.0.1:1', 'content-type': 'application/json' }
 		});
 		assert.equal(post.status, 503);
 	});

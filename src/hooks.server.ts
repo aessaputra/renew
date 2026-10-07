@@ -1,14 +1,14 @@
-import { dev } from '$app/environment';
-import { env } from '$env/dynamic/private';
-import type { Handle } from '@sveltejs/kit';
-import { isValidHttpsOrigin, maybeRefreshSession, SESSION_ABSOLUTE_MS } from '$lib/server/auth-state';
+import type { Handle } from '@sveltejs/kit/hooks';
+import { dev } from '$app/env';
+import { ORIGIN } from '$app/env/private';
+import { isValidHttpsOrigin, maybeRefreshSession, SESSION_ABSOLUTE_MS } from '#lib/server/auth-state.js';
 
 const SESSION_COOKIE = 'renew_session';
 const SESSION_COOKIE_MAX_AGE = Math.floor(SESSION_ABSOLUTE_MS / 1000);
 const PUBLIC_ROUTES = new Set(['/login', '/offline', '/auth/login', '/auth/callback']);
 
 function configOrigin(): string | null {
-	const origin = env.ORIGIN;
+	const origin = ORIGIN;
 	if (!origin || !isValidHttpsOrigin(origin, dev)) return null;
 	return origin;
 }

@@ -1,6 +1,6 @@
 import { error, type ServerLoad } from '@sveltejs/kit';
-import { listSubscriptions, readWallosConfig } from '$lib/server/wallos';
-import { type SubscriptionRow } from '$lib/wallos';
+import { listSubscriptions, readWallosConfig } from '#lib/server/wallos.js';
+import { type SubscriptionRow } from '#lib/wallos.js';
 
 interface ParentReferences {
 	currencies: { id: number; code: string }[];

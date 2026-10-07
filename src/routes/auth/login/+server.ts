@@ -1,6 +1,6 @@
 import { error, redirect, type RequestHandler } from '@sveltejs/kit';
-import { createTransaction, isValidOrigin } from '$lib/server/auth-state';
-import { buildLoginChallenge, discardServerConfig, getServerConfig } from '$lib/server/oidc';
+import { createTransaction, isValidOrigin } from '#lib/server/auth-state.js';
+import { buildLoginChallenge, discardServerConfig, getServerConfig } from '#lib/server/oidc.js';
 
 const TRANSACTION_COOKIE = 'renew_oidc';
 
@@ -29,5 +29,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		path: '/',
 		maxAge: 5 * 60
 	});
-	throw redirect(303, challenge.url);
+	// Authorize URL lives on the OIDC issuer, so mark it external (Kit 3 blocks cross-origin redirects by default).
+	throw redirect(303, challenge.url, { external: true });
 };

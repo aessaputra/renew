@@ -4,7 +4,7 @@
 </svelte:head>
 
 <script lang="ts">
-	import { formatBillingInterval, formatPrice, safeSubscriptionUrl } from '$lib/wallos';
+	import { formatBillingInterval, formatPrice, safeSubscriptionUrl } from '#lib/wallos.js';
 	let { data, form } = $props();
 	let s = $derived(data.subscription);
 	let href = $derived(safeSubscriptionUrl(s.url));

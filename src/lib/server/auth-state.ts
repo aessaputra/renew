@@ -27,6 +27,7 @@ export interface SessionRefresh {
 }
 
 function signingKey(): Buffer | null {
+	// ponytail: process.env keeps this importable by node:test; $app/env/private only resolves inside SvelteKit build.
 	const raw = process.env.SESSION_SECRET ?? '';
 	if (!raw) return null;
 	const key = Buffer.from(raw, 'utf8');

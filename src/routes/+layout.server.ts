@@ -4,7 +4,7 @@ import {
 	listCurrencies,
 	listPaymentMethods,
 	readWallosConfig
-} from '$lib/server/wallos';
+} from '#lib/server/wallos.js';
 
 export const load: ServerLoad = async ({ depends }) => {
 	depends('app:references');

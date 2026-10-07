@@ -1,8 +1,8 @@
-import { env } from '$env/dynamic/private';
+import { ORIGIN } from '$app/env/private';
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { isValidOrigin } from '$lib/server/auth-state';
-import { getSubscription, mutateSubscription, readWallosConfig } from '$lib/server/wallos';
-import { currencyById, type WallosCurrency } from '$lib/wallos';
+import { isValidOrigin } from '#lib/server/auth-state.js';
+import { getSubscription, mutateSubscription, readWallosConfig } from '#lib/server/wallos.js';
+import { currencyById, type WallosCurrency } from '#lib/wallos.js';
 
 interface ParentReferences {
 	currencies: WallosCurrency[];
@@ -10,10 +10,10 @@ interface ParentReferences {
 
 export const load: ServerLoad = async ({ params, parent }) => {
 	const id = params.id ?? '';
-	if (!/^\d+$/.test(id)) throw error(404);
+	if (!(/^\d+$/).test(id)) throw error(404);
 	const config = readWallosConfig();
 	if (!config) throw error(503);
-	const { references } = (await parent()) as { references: ParentReferences };
+	const { references } = await parent() as { references: ParentReferences };
 	let sub;
 	try {
 		sub = await getSubscription(config, id);
@@ -30,7 +30,7 @@ export const load: ServerLoad = async ({ params, parent }) => {
 
 export const actions: Actions = {
 	delete: async ({ request, params }) => {
-		if (!isValidOrigin(request.headers.get('origin'), env.ORIGIN ?? '')) {
+		if (!isValidOrigin(request.headers.get('origin'), ORIGIN)) {
 			return fail(403, { errors: ['Request not allowed.'] });
 		}
 		const fields = await request.formData();
@@ -38,7 +38,7 @@ export const actions: Actions = {
 		const config = readWallosConfig();
 		if (!config) return fail(503, { errors: ['Service unavailable.'] });
 		const id = params.id ?? '';
-		if (!/^\d+$/.test(id)) return fail(404, { errors: ['Subscription not found.'] });
+		if (!(/^\d+$/).test(id)) return fail(404, { errors: ['Subscription not found.'] });
 		try {
 			await mutateSubscription(config, 'delete', { id });
 		} catch (err) {

@@ -1,12 +1,14 @@
-import { env } from '$env/dynamic/private';
+import { ORIGIN } from '$app/env/private';
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { isValidOrigin } from '$lib/server/auth-state';
+import { isValidOrigin } from '#lib/server/auth-state.js';
+import { mutateSubscription, readWallosConfig } from '#lib/server/wallos.js';
+
 import {
-	mutateSubscription,
-	readWallosConfig
-} from '$lib/server/wallos';
-import { subscriptionFormValues, toWallosFields, validateSubscriptionInput } from '$lib/wallos';
-import type { WallosCategory, WallosCurrency, WallosPaymentMethod } from '$lib/wallos';
+	subscriptionFormValues,
+	toWallosFields,
+	validateSubscriptionInput
+} from '#lib/wallos.js';
+import type { WallosCategory, WallosCurrency, WallosPaymentMethod } from '#lib/wallos.js';
 
 interface ParentReferences {
 	references: { categories: WallosCategory[]; paymentMethods: WallosPaymentMethod[]; currencies: WallosCurrency[] };
@@ -16,7 +18,7 @@ interface ParentReferences {
 export const load: ServerLoad = async ({ parent, request }) => {
 	const config = readWallosConfig();
 	if (!config) throw error(503);
-	const { references, referencesUnavailable } = (await parent()) as ParentReferences;
+	const { references, referencesUnavailable } = await parent() as ParentReferences;
 	if (referencesUnavailable) {
 		if (request.method === 'POST') {
 			return { categories: [], paymentMethods: [], currencies: [], referencesUnavailable: true };
@@ -32,7 +34,7 @@ export const load: ServerLoad = async ({ parent, request }) => {
 
 export const actions: Actions = {
 	create: async ({ request }) => {
-		if (!isValidOrigin(request.headers.get('origin'), env.ORIGIN ?? '')) {
+		if (!isValidOrigin(request.headers.get('origin'), ORIGIN)) {
 			return fail(403, { errors: ['Request not allowed.'], values: {} });
 		}
 		const config = readWallosConfig();

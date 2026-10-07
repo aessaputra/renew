@@ -1,10 +1,6 @@
-import { env } from '$env/dynamic/private';
-import type {
-	WallosCategory,
-	WallosPaymentMethod,
-	WallosCurrency
-} from '$lib/wallos.js';
-import { coerceWallosNumber } from '$lib/wallos.js';
+import { WALLOS_BASE_URL, WALLOS_API_KEY } from '$app/env/private';
+import type { WallosCategory, WallosPaymentMethod, WallosCurrency } from '#lib/wallos.js';
+import { coerceWallosNumber } from '#lib/wallos.js';
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -36,8 +32,8 @@ export interface WallosSubscription {
 export type { WallosCategory, WallosPaymentMethod, WallosCurrency };
 
 export function readWallosConfig(): WallosConfig | null {
-	const rawBase = env.WALLOS_BASE_URL;
-	const apiKey = env.WALLOS_API_KEY;
+	const rawBase = WALLOS_BASE_URL;
+	const apiKey = WALLOS_API_KEY;
 	if (!rawBase || !apiKey) return null;
 	const baseUrl = rawBase.replace(/\/+$/, '');
 	try {
@@ -100,11 +96,9 @@ export async function listSubscriptions(config: WallosConfig): Promise<WallosSub
 	return subscriptions;
 }
 
-export async function getSubscription(
-	config: WallosConfig,
-	id: string
-): Promise<WallosSubscription> {
-	if (!/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id))) throw new Error('notfound');
+export async function getSubscription(config: WallosConfig, id: string): Promise<WallosSubscription> {
+	if (!(/^[1-9]\d*$/).test(id) || !Number.isSafeInteger(Number(id))) throw new Error('notfound');
+
 	const body = await wallosGet(config, '/api/subscriptions/get_subscription.php', { id });
 	const sub = body.subscription;
 	const subscription = parseSubscription(sub);

@@ -1,5 +1,13 @@
-import { dev } from '$app/environment';
-import { env } from '$env/dynamic/private';
+import { dev } from '$app/env';
+
+import {
+	ORIGIN,
+	OIDC_ISSUER,
+	OIDC_CLIENT_ID,
+	OIDC_CLIENT_SECRET,
+	OIDC_ALLOWED_SUB
+} from '$app/env/private';
+
 import * as oidc from 'openid-client';
 import { isValidHttpsOrigin, isValidIssuer } from './auth-state';
 
@@ -28,11 +36,12 @@ function readConfigInputs(): {
 	clientSecret: string;
 	allowedSub: string;
 } | null {
-	const origin = env.ORIGIN;
-	const issuer = env.OIDC_ISSUER;
-	const clientId = env.OIDC_CLIENT_ID;
-	const clientSecret = env.OIDC_CLIENT_SECRET;
-	const allowedSub = env.OIDC_ALLOWED_SUB;
+	const origin = ORIGIN;
+	const issuer = OIDC_ISSUER;
+	const clientId = OIDC_CLIENT_ID;
+	const clientSecret = OIDC_CLIENT_SECRET;
+	const allowedSub = OIDC_ALLOWED_SUB;
+
 	if (!origin || !issuer || !clientId || !clientSecret || !allowedSub) return null;
 	if (!isValidHttpsOrigin(origin, dev)) return null;
 	if (!isValidIssuer(issuer)) return null;
@@ -129,4 +138,3 @@ export async function exchangeCallback(
 	}
 	return sub;
 }
-

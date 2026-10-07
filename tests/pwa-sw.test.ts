@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 
-const sw = new URL('../src/service-worker.ts', import.meta.url);
+const sw = new URL('../src/service-worker/index.ts', import.meta.url);
 
 test('service worker file exists with lifecycle handlers', () => {
-	assert.ok(existsSync(sw), 'missing src/service-worker.ts');
+	assert.ok(existsSync(sw), 'missing src/service-worker/index.ts');
 	const src = readFileSync(sw, 'utf8');
 	assert.match(src, /addEventListener\('install'/);
 	assert.match(src, /addEventListener\('activate'/);
@@ -18,7 +18,9 @@ test('sw bypasses auth and falls back to offline page', () => {
 	const src = readFileSync(sw, 'utf8');
 	assert.match(src, /\/auth\//);
 	assert.match(src, /\/offline/);
-	assert.match(src, /\$service-worker/);
+	assert.match(src, /\$app\/manifest/);
+	assert.match(src, /\$app\/service-worker/);
+	assert.doesNotMatch(src, /\$service-worker/);
 });
 
 test('offline route exists and layout registers worker', () => {

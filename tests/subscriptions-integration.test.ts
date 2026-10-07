@@ -384,8 +384,10 @@ function proxyHandler(appPort: number, proxyPort: number) {
 			const headers: Record<string, string | string[] | undefined> = { ...cReq.headers };
 			// Tell adapter-node the public authority so SvelteKit's CSRF
 			// origin check compares Origin against the proxy origin.
+			// Host header must carry no port when PORT_HEADER is set, else the
+			// adapter builds origin with double port (Kit 3 get_origin).
 			headers.host = `127.0.0.1:${appPort}`;
-			headers['x-forwarded-host'] = `127.0.0.1:${proxyPort}`;
+			headers['x-forwarded-host'] = '127.0.0.1';
 			headers['x-forwarded-proto'] = 'https';
 			headers['x-forwarded-port'] = String(proxyPort);
 			delete headers.connection;

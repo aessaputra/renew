@@ -1,13 +1,15 @@
-import { env } from '$env/dynamic/private';
+import { ORIGIN } from '$app/env/private';
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { isValidOrigin } from '$lib/server/auth-state';
+import { isValidOrigin } from '#lib/server/auth-state.js';
+import { getSubscription, mutateSubscription, readWallosConfig } from '#lib/server/wallos.js';
+
 import {
-	getSubscription,
-	mutateSubscription,
-	readWallosConfig
-} from '$lib/server/wallos';
-import { subscriptionFormValues, toWallosFields, validateSubscriptionInput } from '$lib/wallos';
-import type { WallosCategory, WallosCurrency, WallosPaymentMethod } from '$lib/wallos';
+	subscriptionFormValues,
+	toWallosFields,
+	validateSubscriptionInput
+} from '#lib/wallos.js';
+
+import type { WallosCategory, WallosCurrency, WallosPaymentMethod } from '#lib/wallos.js';
 
 interface ParentReferences {
 	references: { categories: WallosCategory[]; paymentMethods: WallosPaymentMethod[]; currencies: WallosCurrency[] };
@@ -16,10 +18,10 @@ interface ParentReferences {
 
 export const load: ServerLoad = async ({ params, parent, request }) => {
 	const id = params.id ?? '';
-	if (!/^\d+$/.test(id)) throw error(404);
+	if (!(/^\d+$/).test(id)) throw error(404);
 	const config = readWallosConfig();
 	if (!config) throw error(503);
-	const { references, referencesUnavailable } = (await parent()) as ParentReferences;
+	const { references, referencesUnavailable } = await parent() as ParentReferences;
 	// ponytail: POST renders data-less outage form via referencesUnavailable; full upstream fetch resumes on restore.
 	if (referencesUnavailable && request.method === 'POST') {
 		return { subscription: null, categories: [], paymentMethods: [], currencies: [], referencesUnavailable: true };
@@ -61,11 +63,11 @@ export const load: ServerLoad = async ({ params, parent, request }) => {
 
 export const actions: Actions = {
 	update: async ({ request, params }) => {
-		if (!isValidOrigin(request.headers.get('origin'), env.ORIGIN ?? '')) {
+		if (!isValidOrigin(request.headers.get('origin'), ORIGIN)) {
 			return fail(403, { errors: ['Request not allowed.'], values: {} });
 		}
 		const id = params.id ?? '';
-		if (!/^\d+$/.test(id)) return fail(404, { errors: ['Subscription not found.'] });
+		if (!(/^\d+$/).test(id)) return fail(404, { errors: ['Subscription not found.'] });
 		const config = readWallosConfig();
 		if (!config) return fail(503, { errors: ['Service unavailable.'], values: {} });
 		const fd = await request.formData();

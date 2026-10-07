@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { filterSubscriptions, formatPrice } from '$lib/wallos';
+	import { filterSubscriptions, formatPrice } from '#lib/wallos.js';
 
 	let { data } = $props();
 	let q = $state('');

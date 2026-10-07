@@ -4,7 +4,7 @@
 </svelte:head>
 
 <script lang="ts">
-	import SubscriptionForm from '$lib/components/subscription-form.svelte';
+	import SubscriptionForm from '#lib/components/subscription-form.svelte';
 	let { data, form } = $props();
 	let state = $derived(
 		(form ?? {}) as { errors?: string[]; values?: Record<string, string> }

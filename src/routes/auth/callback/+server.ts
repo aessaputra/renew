@@ -1,6 +1,6 @@
 import { redirect, type RequestHandler } from '@sveltejs/kit';
-import { consumeTransaction, createSession, SESSION_ABSOLUTE_MS } from '$lib/server/auth-state';
-import { discardServerConfig, exchangeCallback, getServerConfig } from '$lib/server/oidc';
+import { consumeTransaction, createSession, SESSION_ABSOLUTE_MS } from '#lib/server/auth-state.js';
+import { discardServerConfig, exchangeCallback, getServerConfig } from '#lib/server/oidc.js';
 
 const TRANSACTION_COOKIE = 'renew_oidc';
 const SESSION_COOKIE = 'renew_session';
