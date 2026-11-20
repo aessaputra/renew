@@ -64,11 +64,24 @@ export interface SubscriptionRow {
 	price: number;
 	currencyCode: string;
 	next_payment: string;
-	category_id: number;
-	category_name: string;
+	category_ids: number[];
+	category_names: string[];
+	paid_this_cycle?: boolean;
 	payment_method_id: number;
 	payment_method_name: string;
 	inactive: number;
+}
+
+export function formatCategoryList(names: string[]): string {
+	return names.filter(Boolean).join(', ');
+}
+
+export function mergeCategoryIds(primary: number, existing: number[]): string {
+	const ids = [primary];
+	for (const id of existing) {
+		if (Number.isSafeInteger(id) && id > 0 && !ids.includes(id)) ids.push(id);
+	}
+	return ids.join(',');
 }
 
 export function filterSubscriptions(
@@ -79,7 +92,9 @@ export function filterSubscriptions(
 	return list.filter((s) => {
 		if (s.inactive !== 0) return false;
 		if (q && !s.name.toLowerCase().includes(q)) return false;
-		if (filter.categoryId && String(s.category_id) !== filter.categoryId) return false;
+		if (filter.categoryId) {
+			if (!s.category_ids.includes(Number(filter.categoryId))) return false;
+		}
 		if (filter.paymentMethodId && String(s.payment_method_id) !== filter.paymentMethodId)
 			return false;
 		return true;
@@ -117,10 +132,43 @@ export function coerceWallosNumber(value: unknown): number {
 }
 
 export function formatBillingInterval(cycle: unknown, frequency: unknown): string {
-	if (typeof cycle !== 'number' || !Number.isInteger(cycle) || cycle < 1 || cycle > 4 ||
+	if (typeof cycle !== 'number' || !Number.isInteger(cycle) || cycle < 1 || cycle > 5 ||
 		typeof frequency !== 'number' || !Number.isSafeInteger(frequency) || frequency < 1) return 'Not set';
+	if (cycle === 5) return 'One-time';
 	const unit = ['day', 'week', 'month', 'year'][cycle - 1];
 	return frequency === 1 ? `Every ${unit}` : `Every ${frequency} ${unit}s`;
+}
+
+const DAY_MS = 86_400_000;
+
+function localToday(): string {
+	const now = new Date();
+	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+// Mirrors Wallos isPaidThisCycle(); the API returns paid_at but not the computed state.
+export function isPaidThisCycle(
+	paidAt: string,
+	cycle: number,
+	frequency: number,
+	nextPayment: string,
+	today = localToday()
+): boolean {
+	if (!paidAt || cycle === 5) return false;
+	const cycleDays =
+		cycle === 1 ? frequency :
+		cycle === 2 ? frequency * 7 :
+		cycle === 3 ? frequency * 30 :
+		cycle === 4 ? frequency * 365 : 0;
+	if (!Number.isSafeInteger(cycleDays) || cycleDays <= 0) return false;
+	if (![paidAt, nextPayment, today].every(isValidDate)) return false;
+	const paid = Date.parse(`${paidAt}T00:00:00Z`);
+	const next = Date.parse(`${nextPayment}T00:00:00Z`);
+	const now = Date.parse(`${today}T00:00:00Z`);
+	if (now > next) return paid >= next && paid <= next + cycleDays * DAY_MS;
+	const cyclesBack = Math.max(1, Math.ceil(Math.round((next - now) / DAY_MS) / cycleDays));
+	const start = next - cyclesBack * cycleDays * DAY_MS;
+	return paid >= start && paid <= next;
 }
 
 export function safeSubscriptionUrl(value: string): string {
@@ -168,7 +216,9 @@ export function validateSubscriptionInput(
 	if (currency_id === undefined) errors.push('Currency is required.');
 
 	const frequency = toPositiveInt(str('frequency'));
-	if (frequency === undefined) errors.push('Frequency is required.');
+	if (frequency === undefined || frequency > 366) {
+		errors.push('Frequency must be between 1 and 366.');
+	}
 
 	const cycle = toPositiveInt(str('cycle'));
 	if (cycle === undefined || ![1, 2, 3, 4].includes(cycle)) {
@@ -191,12 +241,12 @@ export function validateSubscriptionInput(
 	const daysRaw = str('notify_days_before');
 	let notify_days_before: number | undefined;
 	if (daysRaw) {
-		if (!/^\d+$/.test(daysRaw)) {
-			errors.push('Reminder days must be between 0 and 365.');
+		if (!/^-?\d+$/.test(daysRaw)) {
+			errors.push('Reminder days must be -1 (use the Wallos default) or between 0 and 365.');
 		} else {
 			const n = Number(daysRaw);
-			if (!Number.isSafeInteger(n) || n < 0 || n > 365) {
-				errors.push('Reminder days must be between 0 and 365.');
+			if (!Number.isSafeInteger(n) || n < -1 || n > 365) {
+				errors.push('Reminder days must be -1 (use the Wallos default) or between 0 and 365.');
 			} else {
 				notify_days_before = n;
 			}

@@ -51,7 +51,11 @@ function fixtures(): Fixture {
 				logo_text_color: null,
 				logo_variant: null,
 				category_name: 'Video',
+				category_ids: [1],
+				category_names: ['Video'],
 				payer_user_name: 'Owner',
+				payer_user_ids: [1],
+				payer_user_names: ['Owner'],
 				payment_method_name: 'Card'
 			},
 			{
@@ -79,7 +83,11 @@ function fixtures(): Fixture {
 				logo_text_color: null,
 				logo_variant: null,
 				category_name: 'Music',
+				category_ids: [2],
+				category_names: ['Music'],
 				payer_user_name: 'Owner',
+				payer_user_ids: [1],
+				payer_user_names: ['Owner'],
 				payment_method_name: 'Cash'
 			}
 		],
@@ -171,6 +179,11 @@ function wallosHandler(req: http.IncomingMessage, res: http.ServerResponse): voi
 					return;
 				}
 				const id = Math.max(...F.subscriptions.map((s) => s.id as number)) + 1;
+				const categoryId = Number(fields.category_id ?? 0);
+				const categoryIds = categoryId > 0 ? [categoryId] : [];
+				const categoryNames = categoryIds.map((category) =>
+					String(F.categories.find((item) => item.id === category)?.name ?? 'No category')
+				);
 				F.subscriptions.push({
 					id,
 					name: fields.name,
@@ -196,7 +209,11 @@ function wallosHandler(req: http.IncomingMessage, res: http.ServerResponse): voi
 					logo_text_color: null,
 					logo_variant: null,
 					category_name: '',
+					category_ids: categoryIds,
+					category_names: categoryNames,
 					payer_user_name: 'Owner',
+					payer_user_ids: [1],
+					payer_user_names: ['Owner'],
 					payment_method_name: ''
 				});
 				json(200, { success: true, title: 'added' });
@@ -213,6 +230,14 @@ function wallosHandler(req: http.IncomingMessage, res: http.ServerResponse): voi
 						sub[k] =
 							k === 'price' ? Number(fields[k]) : fields[k];
 					}
+				}
+				if (fields.category_id !== undefined) {
+					const ids = fields.category_id.split(',').map(Number).filter((id) => id > 0);
+					sub.category_id = ids[0] ?? 0;
+					sub.category_ids = ids;
+					sub.category_names = ids.map((category) =>
+						String(F.categories.find((item) => item.id === category)?.name ?? 'No category')
+					);
 				}
 				json(200, { success: true, title: 'updated' });
 				return;
@@ -580,7 +605,7 @@ describe('subscriptions list', () => {
 	it('omits category prefix when absent and labels empty payment metadata', async () => {
 		const previous = F.subscriptions[0];
 		try {
-			F.subscriptions[0] = { ...previous, category_name: '', payment_method_name: '' };
+			F.subscriptions[0] = { ...previous, category_ids: [], category_names: [], payment_method_name: '' };
 			const r = await request(`${ORIGIN}/`, { ca: certFile, jar });
 			assert.equal(r.status, 200);
 			const list = r.body.match(/<ul aria-label="Subscriptions"[^>]*>[\s\S]*?<\/ul>/)?.[0] ?? '';
@@ -640,7 +665,7 @@ describe('subscription detail', () => {
 				[2, 1, 'Every week'], [2, 2, 'Every 2 weeks'],
 				[3, 1, 'Every month'], [3, 3, 'Every 3 months'],
 				[4, 1, 'Every year'], [4, 2, 'Every 2 years'],
-				[0, 1, 'Not set'], [5, 1, 'Not set'], [2.5, 1, 'Not set'],
+				[0, 1, 'Not set'], [5, 1, 'One-time'], [2.5, 1, 'Not set'],
 				[3, 0, 'Not set'], [3, -1, 'Not set'], [3, 1.5, 'Not set']
 			] as const) {
 				F.subscriptions[0] = { ...previous, cycle, frequency };
@@ -654,11 +679,76 @@ describe('subscription detail', () => {
 		} finally { F.subscriptions[0] = previous; }
 	});
 
+	it('labels a negative reminder as the Wallos default', async () => {
+		const previous = F.subscriptions[0];
+		try {
+			F.subscriptions[0] = { ...previous, notify: 1, notify_days_before: -1 };
+			const r = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
+			assert.equal(r.status, 200);
+			assert.match(r.body, /default from Wallos settings/);
+			assert.doesNotMatch(r.body, /on the payment day/);
+		} finally { F.subscriptions[0] = previous; }
+	});
+
+	it('shows payer and paid state from Wallos fields', async () => {
+		const previous = F.subscriptions[0];
+		const today = new Date().toISOString().slice(0, 10);
+		try {
+			const initial = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
+			assert.match(initial.body, /<dt>Payer<\/dt>[\s\S]*?Owner/);
+			F.subscriptions[0] = {
+				...previous,
+				next_payment: '2099-12-31',
+				paid_at: today,
+				payer_user_ids: [1, 2],
+				payer_user_names: ['Owner', 'Partner']
+			};
+			const detail = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
+			assert.equal(detail.status, 200);
+			assert.match(detail.body, /<dt>Payer<\/dt>[\s\S]*?Owner, Partner/);
+			assert.match(detail.body, /<dt>This cycle<\/dt>[\s\S]*?>Paid</);
+			const home = await request(`${ORIGIN}/`, { ca: certFile, jar });
+			assert.equal(home.status, 200);
+			assert.ok(home.body.includes('· Paid'));
+
+			F.subscriptions[0] = { ...F.subscriptions[0], paid_at: '' };
+			const unpaid = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
+			assert.match(unpaid.body, /<dt>This cycle<\/dt>[\s\S]*?>Not paid</);
+		} finally { F.subscriptions[0] = previous; }
+	});
+
+	it('shows one-time purchases without a dead-end edit form', async () => {
+		const previous = F.subscriptions[0];
+		const previousPost = F.lastPost;
+		try {
+			F.subscriptions[0] = { ...previous, cycle: 5, frequency: 1 };
+			const detail = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
+			assert.equal(detail.status, 200);
+			assert.match(detail.body, />One-time</);
+			assert.doesNotMatch(detail.body, /\/subscriptions\/1\/edit/);
+			assert.match(detail.body, /One-time purchases can only be edited in Wallos\./);
+			const edit = await request(`${ORIGIN}/subscriptions/1/edit`, { ca: certFile, jar });
+			assert.equal(edit.status, 400);
+			const post = await request(`${ORIGIN}/subscriptions/1/edit?/update`, {
+				method: 'POST',
+				headers: { origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded' },
+				body: new URLSearchParams({
+					name: 'One-time edit', price: '9.99', currency_id: '1', frequency: '1',
+					cycle: '3', next_payment: '2026-10-01'
+				}).toString(),
+				ca: certFile, jar
+			});
+			assert.equal(post.status, 400);
+			assert.equal(F.lastPost, previousPost);
+		} finally { F.subscriptions[0] = previous; F.lastPost = previousPost; }
+	});
+
 	it('renders fields and edit/delete controls', async () => {
 		const r = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
 		assert.equal(r.status, 200);
 		assert.match(r.body, /Fixture One/);
 		assert.match(r.body, /9\.99/);
+		assert.match(r.body, /<dt>Auto-renew<\/dt>[\s\S]*?<dd>On<\/dd>/);
 		assert.match(r.body, /\/subscriptions\/1\/edit/);
 		assert.match(r.body, /Delete/);
 	});
@@ -751,7 +841,7 @@ describe('mobile detail actions', () => {
     const edit = r.body.indexOf('href="/subscriptions/1/edit"');
     const dialog = r.body.indexOf('<dialog');
     assert.ok(billing >= 0 && billingEnd > billing && edit > billingEnd && dialog > edit);
-    assert.match(r.body, /<div class="detail-actions">\s*<a[^>]*>Edit<\/a>\s*<button/);
+    assert.match(r.body, /<div class="detail-actions">[\s\S]*?<a[^>]*>Edit<\/a>[\s\S]*?<button/);
     assert.match(r.body, /<dialog[^>]*aria-labelledby="delete-dialog-title"/);
     assert.match(r.body, /<h2[^>]*>Delete Fixture One \?<\/h2>/);
     assert.match(r.body, /This permanently deletes this subscription\. This cannot be undone\./);
@@ -1013,6 +1103,32 @@ describe('subscription mutations', () => {
 		assert.equal(F.lastPost?.action, 'edit');
 		const detail = await request(`${ORIGIN}/subscriptions/1`, { ca: certFile, jar });
 		assert.match(detail.body, /Fixture One Edited/);
+	});
+
+	it('keeps secondary categories when the primary category changes', async () => {
+		const previous = F.subscriptions[0];
+		try {
+			F.subscriptions[0] = { ...previous, category_id: 1, category_ids: [1, 2], category_names: ['Video', 'Music'] };
+			const body = new URLSearchParams({
+				name: 'Category Edit',
+				price: '9.99',
+				currency_id: '1',
+				frequency: '1',
+				cycle: '3',
+				next_payment: '2026-10-01',
+				category_id: '2'
+			}).toString();
+			const r = await request(`${ORIGIN}/subscriptions/1/edit?/update`, {
+				method: 'POST',
+				headers: { origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded' },
+				body,
+				ca: certFile,
+				jar
+			});
+			assert.equal(r.status, 303);
+			assert.equal(F.lastPost?.category_id, '2,1');
+			assert.deepEqual(F.subscriptions[0].category_ids, [2, 1]);
+		} finally { F.subscriptions[0] = previous; }
 	});
 
 	it('deletes and removes the row', async () => {

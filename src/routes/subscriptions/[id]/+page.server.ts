@@ -2,7 +2,7 @@ import { ORIGIN } from '$app/env/private';
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { isValidOrigin } from '#lib/server/auth-state.js';
 import { getSubscription, mutateSubscription, readWallosConfig } from '#lib/server/wallos.js';
-import { currencyById, type WallosCurrency } from '#lib/wallos.js';
+import { currencyById, isPaidThisCycle, type WallosCurrency } from '#lib/wallos.js';
 
 interface ParentReferences {
 	currencies: WallosCurrency[];
@@ -24,7 +24,12 @@ export const load: ServerLoad = async ({ params, parent }) => {
 	}
 	const currency = currencyById(references.currencies, sub.currency_id);
 	return {
-		subscription: { ...sub, currencyCode: currency.code, currencySymbol: currency.symbol }
+		subscription: {
+			...sub,
+			paidThisCycle: isPaidThisCycle(sub.paid_at, sub.cycle, sub.frequency, sub.next_payment),
+			currencyCode: currency.code,
+			currencySymbol: currency.symbol
+		}
 	};
 };
 

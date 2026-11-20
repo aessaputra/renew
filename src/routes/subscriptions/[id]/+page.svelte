@@ -4,7 +4,7 @@
 </svelte:head>
 
 <script lang="ts">
-	import { formatBillingInterval, formatPrice, safeSubscriptionUrl } from '#lib/wallos.js';
+	import { formatBillingInterval, formatCategoryList, formatPrice, safeSubscriptionUrl } from '#lib/wallos.js';
 	let { data, form } = $props();
 	let s = $derived(data.subscription);
 	let href = $derived(safeSubscriptionUrl(s.url));
@@ -36,6 +36,12 @@
 				<dt>Next payment</dt>
 				<dd>{s.next_payment || 'Not set'}</dd>
 			</div>
+			{#if s.cycle !== 5}
+				<div>
+					<dt>This cycle</dt>
+					<dd>{s.paidThisCycle ? 'Paid' : 'Not paid'}</dd>
+				</div>
+			{/if}
 			<div>
 				<dt>Start date</dt>
 				<dd>{s.start_date || 'Not set'}</dd>
@@ -46,8 +52,14 @@
 			</div>
 			<div>
 				<dt>Category</dt>
-				<dd>{s.category_name || 'Not set'}</dd>
+				<dd>{formatCategoryList(s.category_names) || 'Not set'}</dd>
 			</div>
+			{#if s.payer_user_names.length > 0}
+				<div>
+					<dt>Payer</dt>
+					<dd>{s.payer_user_names.join(', ')}</dd>
+				</div>
+			{/if}
 			<div>
 				<dt>Payment method</dt>
 				<dd>{s.payment_method_name || 'Not set'}</dd>
@@ -55,9 +67,19 @@
 			<div>
 				<dt>Reminder</dt>
 				<dd>
-					{s.notify === 1 ? `On · ${s.notify_days_before} days before` : 'Off'}
+					{s.notify === 1 ? `On · ${s.notify_days_before < 0 ? 'default from Wallos settings' : `${s.notify_days_before} days before`}` : 'Off'}
 				</dd>
 			</div>
+			<div>
+				<dt>Auto-renew</dt>
+				<dd>{s.auto_renew === 1 ? 'On' : 'Off'}</dd>
+			</div>
+			{#if s.cancellation_date}
+				<div>
+					<dt>Cancellation date</dt>
+					<dd>{s.cancellation_date}</dd>
+				</div>
+			{/if}
 			{#if s.url}
 				<div>
 					<dt>URL</dt>
@@ -78,7 +100,11 @@
 			{/if}
 			</dl>
 			<div class="detail-actions">
-				<a href="/subscriptions/{s.id}/edit" aria-label="Edit {s.name}" class="primary-action primary-action-inline">Edit</a>
+				{#if s.cycle === 5}
+					<p class="text-sm text-muted-foreground">One-time purchases can only be edited in Wallos.</p>
+				{:else}
+					<a href="/subscriptions/{s.id}/edit" aria-label="Edit {s.name}" class="primary-action primary-action-inline">Edit</a>
+				{/if}
 				<button type="button" onclick={() => { if (deleteDialog && !deleteDialog.open) deleteDialog.showModal(); }} class="danger-action danger-action-inline">Delete subscription</button>
 				<dialog bind:this={deleteDialog} aria-labelledby="delete-dialog-title" class="delete-dialog">
 					<h2 id="delete-dialog-title" class="text-xl font-semibold tracking-tight">Delete {s.name} ?</h2>

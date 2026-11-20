@@ -279,9 +279,10 @@ it('detail presents data once with price beside the title and actions below bill
   assert.ok(detail.indexOf('<dl class="billing-grid">') < detail.indexOf('class="detail-actions"'));
   assert.ok(detail.indexOf('</dl>') < detail.indexOf('class="detail-actions"'));
   assert.doesNotMatch(detail, /\bcard(?:-pad)?\b|eyebrow|billing-heading|action-bar/);
-  for (const field of ['next_payment', 'category_name', 'payment_method_name', 'price', 'start_date', 'cycle', 'frequency']) {
+  for (const field of ['next_payment', 'category_names', 'payment_method_name', 'price', 'start_date', 'frequency']) {
     assert.equal((detail.match(new RegExp(`s\\.${field}\\b`, 'g')) ?? []).length, 1, field);
   }
+  assert.equal((detail.match(/\bs\.cycle\b/g) ?? []).length, 3);
   assert.equal((detail.match(/>Billing interval<\/dt>/g) ?? []).length, 1);
   assert.match(detail, /\{formatBillingInterval\(s\.cycle, s\.frequency\)\}/);
   assert.doesNotMatch(detail, />(?:Cycle|Frequency)<\/dt>/);
@@ -305,7 +306,7 @@ it('detail delete confirms in a native dialog with explicit actions', () => {
   assert.doesNotMatch(detail, /Delete \{s\.name\} permanently/);
   assert.match(detail, /<input[^>]*type="hidden"[^>]*name="confirm"[^>]*value="yes"/);
   assert.doesNotMatch(detail, /<details|confirm-delete|name="confirm"[^>]*required/);
-  assert.match(detail, /<div class="detail-actions">\s*<a[\s\S]*?>Edit<\/a>\s*<button[\s\S]*?>Delete subscription<\/button>/);
+  assert.match(detail, /<div class="detail-actions">[\s\S]*?\{#if s\.cycle === 5\}[\s\S]*?One-time purchases can only be edited in Wallos\.[\s\S]*?\{:else\}[\s\S]*?<a[\s\S]*?>Edit<\/a>[\s\S]*?\{\/if\}[\s\S]*?<button[\s\S]*?>Delete subscription<\/button>/);
   assert.ok(detail.indexOf('</dl>') < detail.indexOf('<dialog'));
   assert.match(detail, /<form method="dialog"/);
   assert.match(detail, /<form method="POST" action="\/subscriptions\/\{s\.id\}\?\/delete"/);

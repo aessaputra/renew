@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { filterSubscriptions, formatPrice } from '#lib/wallos.js';
+	import { filterSubscriptions, formatCategoryList, formatPrice } from '#lib/wallos.js';
 
 	let { data } = $props();
 	let q = $state('');
@@ -93,7 +93,7 @@
 				{#await Promise.all([data.categories, data.paymentMethods])}
 					<p class="flex min-h-12 items-center text-sm text-muted-foreground" role="status">Loading filters…</p>
 				{:then [cats, pays]}
-					{@const activeCatIds = new Set(activeSubs.map((s) => s.category_id))}
+					{@const activeCatIds = new Set(activeSubs.flatMap((s) => s.category_ids))}
 					{@const activePayIds = new Set(activeSubs.map((s) => s.payment_method_id))}
 					{@const usedCats = cats.filter((c) => activeCatIds.has(c.id))}
 					{@const usedPays = pays.filter((m) => activePayIds.has(m.id))}
@@ -147,16 +147,17 @@
 		{:else}
 			<ul aria-label="Subscriptions" class="divide-y divide-border border-y border-border" data-sveltekit-preload-data="tap" data-sveltekit-preload-code="viewport">
 				{#each filtered as s (s.id)}
+					{@const categoryLabel = formatCategoryList(s.category_names)}
 					<li>
 						<a href="/subscriptions/{s.id}" class="flex min-h-14 items-center gap-3 rounded-[var(--radius-control)] px-3 py-3.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
 							<span class="min-w-0 flex-1">
 								<span class="flex min-w-0 items-center gap-3">
-									<span class="min-w-0 flex-1 truncate text-base font-semibold">{s.category_name ? `[${s.category_name}] ${s.name}` : s.name}</span>
+									<span class="min-w-0 flex-1 truncate text-base font-semibold">{categoryLabel ? `[${categoryLabel}] ${s.name}` : s.name}</span>
 									<span class="shrink-0 text-right text-base font-semibold tabular-nums">{formatPrice(s.price, s.currencyCode)}</span>
 								</span>
 								<span class="mt-1 flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
 									<span class="min-w-0 flex-1 truncate">{s.payment_method_name || 'No payment method'}</span>
-									<span class="shrink-0 tabular-nums">Next payment {s.next_payment || 'Not set'}</span>
+									<span class="shrink-0 tabular-nums">Next payment {s.next_payment || 'Not set'}{#if s.paid_this_cycle}<span class="ml-1 font-medium text-foreground">· Paid</span>{/if}</span>
 								</span>
 							</span>
 						</a>

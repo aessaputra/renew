@@ -1,60 +1,246 @@
-openapi: '3.0.3'
+openapi: 3.0.3
 info:
-  version: '2.0.0'
-  title: 'Wallos API'
-  description: 'API documentation for Wallos'
-  x-logo:
-    url: 'https://wallos.aes.my.id/images/logo/wallosapi.png'
-    altText: 'Wallos API Logo'
+  version: '5.11.2'
+  title: Wallos API (Renew subset)
+  description: >
+    The Wallos v5.11.2 API endpoints used by Renew. Wallos returns HTTP 200 for
+    both success and failure; check the `success` field in the JSON envelope.
 servers:
-  - url: https://wallos.aes.my.id
-    description: Production Server
+  - url: /
+    description: Wallos instance serving this document
 paths:
-  /api/admin/get_admin_settings.php:
-    $ref: '/api/admin/get_admin_settings.yaml'
-  /api/admin/set_admin_settings.php:
-    $ref: '/api/admin/set_admin_settings.yaml'
-  /api/admin/set_disable_password_login.php:
-    $ref: '/api/admin/set_disable_password_login.yaml'
-  /api/admin/get_oidc_settings.php:
-    $ref: '/api/admin/get_oidc_settings.yaml'
-  /api/admin/set_oidc_settings.php:
-    $ref: '/api/admin/set_oidc_settings.yaml'
   /api/categories/get_categories.php:
-    $ref: '/api/categories/get_categories.yaml'
-  /api/categories/set_categories.php:
-    $ref: '/api/categories/set_categories.yaml'
+    get:
+      summary: List categories
+      parameters:
+        - $ref: '#/components/parameters/ApiKey'
+      responses:
+        '200':
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  title: { type: string }
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
   /api/currencies/get_currencies.php:
-    $ref: '/api/currencies/get_currencies.yaml'
-  /api/currencies/set_currencies.php:
-    $ref: '/api/currencies/set_currencies.yaml'
-  /api/fixer/get_fixer.php:
-    $ref: '/api/fixer/get_fixer.yaml'
-  /api/fixer/set_fixer.php:
-    $ref: '/api/fixer/set_fixer.yaml'
-  /api/household/get_household.php:
-    $ref: '/api/household/get_household.yaml'
-  /api/household/set_household.php:
-    $ref: '/api/household/set_household.yaml'
-  /api/notifications/get_notification_settings.php:
-    $ref: '/api/notifications/get_notification_settings.yaml'
+    get:
+      summary: List currencies
+      parameters:
+        - $ref: '#/components/parameters/ApiKey'
+      responses:
+        '200':
+          description: Currency list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  title: { type: string }
+                  currencies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Currency'
   /api/payment_methods/get_payment_methods.php:
-    $ref: '/api/payment_methods/get_payment_methods.yaml'
-  /api/payment_methods/set_payment_methods.php:
-    $ref: '/api/payment_methods/set_payment_methods.yaml'
-  /api/settings/get_settings.php:
-    $ref: '/api/settings/get_settings.yaml'
-  /api/settings/set_settings.php:
-    $ref: '/api/settings/set_settings.yaml'
-  /api/subscriptions/get_ical_feed.php:
-    $ref: '/api/subscriptions/get_ical_feed.yaml'
-  /api/subscriptions/get_monthly_cost.php:
-    $ref: '/api/subscriptions/get_monthly_cost.yaml'
-  /api/subscriptions/get_subscription.php:
-    $ref: '/api/subscriptions/get_subscription.yaml'
+    get:
+      summary: List payment methods
+      parameters:
+        - $ref: '#/components/parameters/ApiKey'
+      responses:
+        '200':
+          description: Payment method list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  title: { type: string }
+                  payment_methods:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PaymentMethod'
   /api/subscriptions/get_subscriptions.php:
-    $ref: '/api/subscriptions/get_subscriptions.yaml'
+    get:
+      summary: List subscriptions
+      parameters:
+        - $ref: '#/components/parameters/ApiKey'
+      responses:
+        '200':
+          description: Subscription list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  title: { type: string }
+                  subscriptions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Subscription'
+                  notes:
+                    type: array
+                    items: { type: string }
+  /api/subscriptions/get_subscription.php:
+    get:
+      summary: Get one subscription
+      parameters:
+        - $ref: '#/components/parameters/ApiKey'
+        - name: id
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Subscription or error envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  title: { type: string }
+                  subscription:
+                    $ref: '#/components/schemas/Subscription'
+                  notes:
+                    type: array
+                    items: { type: string }
   /api/subscriptions/set_subscriptions.php:
-    $ref: '/api/subscriptions/set_subscriptions.yaml'
-  /api/users/get_user.php:
-    $ref: '/api/users/get_user.yaml'
+    post:
+      summary: Add, edit, or delete a subscription
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [api_key, action]
+              properties:
+                api_key: { type: string }
+                action: { type: string, enum: [add, edit, delete] }
+                id:
+                  type: integer
+                  description: Required for edit and delete.
+                name: { type: string }
+                price: { type: number }
+                currency_id: { type: integer }
+                frequency:
+                  type: integer
+                  minimum: 1
+                  maximum: 366
+                cycle:
+                  type: integer
+                  enum: [1, 2, 3, 4]
+                  description: Days, weeks, months, years.
+                next_payment: { type: string, format: date }
+                start_date: { type: string, format: date }
+                auto_renew: { type: integer, enum: [0, 1], default: 1 }
+                payment_method_id: { type: integer }
+                payer_user_id:
+                  type: string
+                  description: One ID or comma-separated IDs; first is primary.
+                category_id:
+                  type: string
+                  description: One ID or comma-separated IDs; first is primary.
+                notes: { type: string }
+                url: { type: string, format: uri }
+                notify: { type: integer, enum: [0, 1] }
+                notify_days_before: { type: integer }
+                inactive: { type: integer, enum: [0, 1] }
+                cancellation_date: { type: string, format: date }
+                replacement_subscription_id: { type: integer }
+      responses:
+        '200':
+          description: Write result or error envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  title: { type: string }
+                  message: { type: string }
+                  subscriptionId:
+                    type: integer
+                    description: Present on successful add.
+components:
+  parameters:
+    ApiKey:
+      name: apiKey
+      in: query
+      required: true
+      schema: { type: string }
+  schemas:
+    Category:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        order: { type: integer }
+        in_use: { type: integer }
+    Currency:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        symbol: { type: string }
+        code: { type: string }
+    PaymentMethod:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        icon: { type: string }
+        enabled: { type: integer, enum: [0, 1] }
+        order: { type: integer }
+        in_use: { type: integer }
+    Subscription:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        logo: { type: string, nullable: true }
+        price: { type: number }
+        currency_id: { type: integer }
+        start_date: { type: string, format: date }
+        next_payment: { type: string, format: date }
+        cycle:
+          type: integer
+          enum: [1, 2, 3, 4, 5]
+          description: Days, weeks, months, years, or one-time.
+        frequency: { type: integer }
+        auto_renew: { type: integer, enum: [0, 1] }
+        notes: { type: string }
+        payment_method_id: { type: integer, nullable: true }
+        payer_user_id: { type: integer, nullable: true }
+        category_id: { type: integer, nullable: true }
+        notify: { type: integer, enum: [0, 1] }
+        url: { type: string }
+        inactive: { type: integer, enum: [0, 1] }
+        notify_days_before: { type: integer, nullable: true }
+        user_id: { type: integer }
+        cancellation_date: { type: string, nullable: true }
+        paid_at: { type: string, format: date, nullable: true }
+        replacement_subscription_id: { type: integer, nullable: true }
+        category_name: { type: string }
+        category_ids:
+          type: array
+          items: { type: integer }
+        category_names:
+          type: array
+          items: { type: string }
+        payer_user_name: { type: string }
+        payer_user_ids:
+          type: array
+          items: { type: integer }
+        payer_user_names:
+          type: array
+          items: { type: string }
+        payment_method_name: { type: string }

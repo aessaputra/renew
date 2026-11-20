@@ -1,6 +1,6 @@
 import { error, type ServerLoad } from '@sveltejs/kit';
 import { listSubscriptions, readWallosConfig } from '#lib/server/wallos.js';
-import { type SubscriptionRow } from '#lib/wallos.js';
+import { type SubscriptionRow, isPaidThisCycle } from '#lib/wallos.js';
 
 interface ParentReferences {
 	currencies: { id: number; code: string }[];
@@ -27,8 +27,9 @@ export const load: ServerLoad = async ({ parent }) => {
 		price: s.price,
 		currencyCode: currencyCodeById.get(s.currency_id) ?? '',
 		next_payment: s.next_payment,
-		category_id: s.category_id,
-		category_name: s.category_name,
+		category_ids: s.category_ids,
+		category_names: s.category_names,
+		paid_this_cycle: isPaidThisCycle(s.paid_at, s.cycle, s.frequency, s.next_payment),
 		payment_method_id: s.payment_method_id,
 		payment_method_name: s.payment_method_name,
 		inactive: s.inactive

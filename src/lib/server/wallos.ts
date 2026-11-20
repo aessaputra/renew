@@ -25,8 +25,14 @@ export interface WallosSubscription {
 	notes: string;
 	url: string;
 	start_date: string;
-	category_name: string;
+	category_ids: number[];
+	category_names: string[];
+	payer_user_ids: number[];
+	payer_user_names: string[];
+	paid_at: string;
 	payment_method_name: string;
+	auto_renew: number;
+	cancellation_date: string;
 }
 
 export type { WallosCategory, WallosPaymentMethod, WallosCurrency };
@@ -110,18 +116,39 @@ function parseSubscription(value: unknown): WallosSubscription {
 	if (!isRecord(value)) throw new Error('failed');
 	const NULLABLE_NUMBERS = new Set(['category_id', 'payment_method_id', 'notify_days_before']);
 	const numericFields = ["id", "price", "currency_id", "cycle", "frequency", "payment_method_id", "category_id", "notify", "inactive", "notify_days_before"] as const;
-	const stringFields = ["name", "next_payment", "notes", "url", "start_date", "category_name", "payment_method_name"] as const;
+	const requiredStrings = ["name", "next_payment", "payment_method_name"] as const;
+	const optionalStrings = ["notes", "url", "start_date", "cancellation_date", "paid_at"] as const;
 	for (const key of numericFields) {
 		const raw = value[key];
 		const coerced = raw == null && NULLABLE_NUMBERS.has(key) ? 0 : raw;
 		if (typeof coerced !== 'number' || !Number.isFinite(coerced)) throw new Error('failed');
 	}
-	if (stringFields.some((key) => typeof value[key] !== 'string')) throw new Error('failed');
+	if (requiredStrings.some((key) => typeof value[key] !== 'string')) throw new Error('failed');
+	if (optionalStrings.some((key) => value[key] != null && typeof value[key] !== 'string')) throw new Error('failed');
 	if (!Number.isSafeInteger(value.id) || Number(value.id) <= 0 || ![0, 1].includes(Number(value.inactive)) || ![0, 1].includes(Number(value.notify))) throw new Error('failed');
+	if (value.auto_renew !== 0 && value.auto_renew !== 1) throw new Error('failed');
 	// Only known fields cross the server boundary; upstream extras never reach page data.
-	const out = Object.fromEntries([...numericFields, ...stringFields].map((key) => [key, value[key]])) as unknown as Record<string, unknown>;
+	const out = Object.fromEntries([...numericFields, ...requiredStrings, ...optionalStrings].map((key) => [key, value[key]])) as unknown as Record<string, unknown>;
+	out.auto_renew = value.auto_renew;
 	for (const key of NULLABLE_NUMBERS) out[key] = coerceWallosNumber(out[key]);
+	for (const key of optionalStrings) out[key] = out[key] ?? '';
+	out.category_ids = parseIds(value.category_ids);
+	out.category_names = parseNames(value.category_names);
+	out.payer_user_ids = parseIds(value.payer_user_ids);
+	out.payer_user_names = parseNames(value.payer_user_names);
 	return out as unknown as WallosSubscription;
+}
+
+function parseIds(value: unknown): number[] {
+	if (!Array.isArray(value) || value.some((id) => typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0)) {
+		throw new Error('failed');
+	}
+	return [...new Set(value as number[])];
+}
+
+function parseNames(value: unknown): string[] {
+	if (!Array.isArray(value) || value.some((name) => typeof name !== 'string')) throw new Error('failed');
+	return value as string[];
 }
 
 function referenceList(value: unknown): Record<string, unknown>[] {

@@ -4,6 +4,7 @@ import { isValidOrigin } from '#lib/server/auth-state.js';
 import { getSubscription, mutateSubscription, readWallosConfig } from '#lib/server/wallos.js';
 
 import {
+	mergeCategoryIds,
 	subscriptionFormValues,
 	toWallosFields,
 	validateSubscriptionInput
@@ -36,6 +37,10 @@ export const load: ServerLoad = async ({ params, parent, request }) => {
 	}
 	if (referencesUnavailable) {
 		throw error(503);
+	}
+	// Wallos v5 keeps one-time purchases as cycle 5, but its API rejects cycle 5 on save.
+	if (sub.cycle === 5) {
+		throw error(400, 'One-time purchases can only be edited in Wallos.');
 	}
 	return {
 		subscription: {
@@ -76,7 +81,19 @@ export const actions: Actions = {
 			return fail(400, { errors: validated.errors, values: subscriptionFormValues(fd) });
 		}
 		try {
-			await mutateSubscription(config, 'edit', { id, ...toWallosFields(validated.data, true) });
+			const current = await getSubscription(config, id);
+			if (current.cycle === 5) {
+				return fail(400, {
+					errors: ['One-time purchases can only be edited in Wallos.'],
+					values: subscriptionFormValues(fd)
+				});
+			}
+			const fields = toWallosFields(validated.data, true);
+			// The form edits the primary category only; keep Wallos' secondary categories.
+			if (validated.data.category_id !== undefined) {
+				fields.category_id = mergeCategoryIds(validated.data.category_id, current.category_ids);
+			}
+			await mutateSubscription(config, 'edit', { id, ...fields });
 		} catch (err) {
 			const code = err instanceof Error ? err.message : 'failed';
 			if (code === 'notfound') return fail(404, { errors: ['Subscription not found.'] });

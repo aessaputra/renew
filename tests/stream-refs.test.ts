@@ -25,7 +25,7 @@ assert.match(src, /id="payment-filter"/);
 
 test('list page limits filter menus to references used by active subscriptions', () => {
 const src = readFileSync('src/routes/+page.svelte', 'utf8');
-assert.match(src, /activeCatIds = new Set\(activeSubs\.map/);
+assert.match(src, /activeCatIds = new Set\(activeSubs\.flatMap\(\(s\) => s\.category_ids\)\)/);
 assert.match(src, /usedCats = cats\.filter\(\(c\) => activeCatIds\.has\(c\.id\)\)/);
 assert.match(src, /activePayIds = new Set\(activeSubs\.map/);
 assert.match(src, /usedPays = pays\.filter\(\(m\) => activePayIds\.has\(m\.id\)\)/);

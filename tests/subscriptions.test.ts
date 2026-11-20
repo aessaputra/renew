@@ -2,7 +2,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	formatBillingInterval,
+	formatCategoryList,
 	filterSubscriptions,
+	isPaidThisCycle,
+	mergeCategoryIds,
 	safeSubscriptionUrl,
 	coerceWallosNumber,
 	subscriptionFormValues,
@@ -21,7 +24,9 @@ it('formats billing intervals with the confirmed units and rejects invalid value
 		assert.equal(formatBillingInterval(invalid, 1), 'Not set');
 		assert.equal(formatBillingInterval(3, invalid), 'Not set');
 	}
-	assert.equal(formatBillingInterval(5, 1), 'Not set');
+	assert.equal(formatBillingInterval(5, 1), 'One-time');
+	assert.equal(formatBillingInterval(5, 0), 'Not set');
+	assert.equal(formatBillingInterval(6, 1), 'Not set');
 });
 
 function fd(entries: Record<string, string>): FormData {
@@ -45,8 +50,8 @@ const row = (over: Partial<SubscriptionRow> = {}): SubscriptionRow => ({
 	price: 12.99,
 	currencyCode: 'EUR',
 	next_payment: '2026-10-01',
-	category_id: 2,
-	category_name: 'Video',
+	category_ids: [2],
+	category_names: ['Video'],
 	payment_method_id: 3,
 	payment_method_name: 'Card',
 	inactive: 0,
@@ -99,15 +104,23 @@ describe('validateSubscriptionInput', () => {
 		assert.equal(r.ok, false);
 	});
 
-	it('rejects out-of-range reminder days', () => {
-		for (const days of ['-1', '9999', 'abc']) {
+	it('accepts -1 as the payment day and rejects out-of-range reminder days', () => {
+		for (const days of ['-2', '9999', 'abc']) {
 			const r = validateSubscriptionInput(
 				fd({ ...valid(), notify_days_before: days })
 			);
 			assert.equal(r.ok, false);
 		}
-		const ok = validateSubscriptionInput(fd({ ...valid(), notify_days_before: '7' }));
-		assert.equal(ok.ok, true);
+		for (const days of ['-1', '0', '365']) {
+			assert.equal(validateSubscriptionInput(fd({ ...valid(), notify_days_before: days })).ok, true);
+		}
+	});
+
+	it('bounds frequency to the Wallos API range', () => {
+		assert.equal(validateSubscriptionInput(fd({ ...valid(), frequency: '366' })).ok, true);
+		const r = validateSubscriptionInput(fd({ ...valid(), frequency: '367' }));
+		assert.equal(r.ok, false);
+		if (!r.ok) assert.ok(r.errors.some((e) => e.includes('Frequency')));
 	});
 
 	it('rejects bad url', () => {
@@ -180,10 +193,47 @@ describe('input trust boundaries', () => {
 	});
 });
 
+describe('category helpers', () => {
+	it('joins every category name', () => {
+		assert.equal(formatCategoryList([]), '');
+		assert.equal(formatCategoryList(['Video', 'Music']), 'Video, Music');
+		assert.equal(formatCategoryList(['', '']), '');
+	});
+
+	it('keeps secondary category ids when the primary changes', () => {
+		assert.equal(mergeCategoryIds(2, [1, 2, 3]), '2,1,3');
+		assert.equal(mergeCategoryIds(2, []), '2');
+		assert.equal(mergeCategoryIds(2, [2]), '2');
+	});
+});
+
+describe('isPaidThisCycle', () => {
+	it('matches the Wallos window for the current month', () => {
+		assert.equal(isPaidThisCycle('2026-09-01', 3, 1, '2026-10-01', '2026-09-15'), true);
+		assert.equal(isPaidThisCycle('2026-10-01', 3, 1, '2026-10-01', '2026-10-01'), true);
+		assert.equal(isPaidThisCycle('2026-08-31', 3, 1, '2026-10-01', '2026-09-15'), false);
+		assert.equal(isPaidThisCycle('', 3, 1, '2026-10-01', '2026-09-15'), false);
+	});
+
+	it('accepts payments up to one cycle after an overdue date', () => {
+		assert.equal(isPaidThisCycle('2026-10-05', 3, 1, '2026-10-01', '2026-11-15'), true);
+		assert.equal(isPaidThisCycle('2026-10-31', 3, 1, '2026-10-01', '2026-11-15'), true);
+		assert.equal(isPaidThisCycle('2026-11-01', 3, 1, '2026-10-01', '2026-11-15'), false);
+	});
+
+	it('handles yearly cycles and rejects invalid input', () => {
+		assert.equal(isPaidThisCycle('2025-10-01', 4, 1, '2026-10-01', '2026-01-01'), true);
+		assert.equal(isPaidThisCycle('2025-09-30', 4, 1, '2026-10-01', '2026-01-01'), false);
+		assert.equal(isPaidThisCycle('2026-10-01', 5, 1, '2026-10-01', '2026-10-01'), false);
+		assert.equal(isPaidThisCycle('not-a-date', 3, 1, '2026-10-01', '2026-09-15'), false);
+		assert.equal(isPaidThisCycle('2026-09-01', 0, 1, '2026-10-01', '2026-09-15'), false);
+	});
+});
+
 describe('filterSubscriptions', () => {
 	const list = [
 		row({ id: 1, name: 'Netflix' }),
-		row({ id: 2, name: 'Spotify', category_id: 5 }),
+		row({ id: 2, name: 'Spotify', category_ids: [5], category_names: ['Music'] }),
 		row({ id: 3, name: 'Old', inactive: 1 })
 	];
 
@@ -207,6 +257,12 @@ describe('filterSubscriptions', () => {
 		assert.equal(coerceWallosNumber(null), 0);
 		assert.equal(coerceWallosNumber(undefined), 0);
 		assert.equal(coerceWallosNumber(7), 7);
+	});
+
+	it('matches any category when Wallos returns several', () => {
+		const multi = [row({ id: 4, category_ids: [2, 9] })];
+		const out = filterSubscriptions(multi, { q: '', categoryId: '9', paymentMethodId: '' });
+		assert.deepEqual(out.map((s) => s.id), [4]);
 	});
 
 	it('always hides inactive', () => {

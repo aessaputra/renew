@@ -82,6 +82,7 @@
 					name="frequency"
 					type="number"
 					min="1"
+					max="366"
 					step="1"
 					required
 					inputmode="numeric"
@@ -176,7 +177,7 @@
 						id="reminder-days"
 						name="notify_days_before"
 						type="number"
-						min="0"
+						min="-1"
 						max="365"
 						inputmode="numeric"
 						aria-label="Reminder days before"

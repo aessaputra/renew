@@ -56,6 +56,6 @@ npm run test
 npm run build
 ```
 
-Tests use local mock services, not production subscriptions. `npm run test` builds with the Node adapter before running the unit and integration tests. The Wallos API contract reference is in [`openapi.yaml`](openapi.yaml).
+Tests use local mock services, not production subscriptions. `npm run test` builds with the Node adapter before running the unit and integration tests. The subset of the Wallos API that Renew uses is documented in [`openapi.yaml`](openapi.yaml).
 
 Built with SvelteKit, Svelte 5, TypeScript and Tailwind CSS 4.
